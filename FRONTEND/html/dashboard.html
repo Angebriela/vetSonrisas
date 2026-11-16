@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Panel administrativo de Veterinaria Sonrisas">
+    <title>Panel principal · Veterinaria Sonrisas</title>
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+    <div class="dashboard-layout">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="../pictures/logo.png" alt="Veterinaria Sonrisas" class="brand-logo">
+                <div class="brand-copy"><strong>Veterinaria Sonrisas</strong><span>Gestión veterinaria</span></div>
+            </div>
+            <nav class="nav-menu" aria-label="Módulos">
+                <p class="nav-label">General</p>
+                <a href="#" class="nav-link active" data-target="overview"><span class="nav-icon">⌂</span><span>Resumen</span></a>
+                <p class="nav-label">Operación</p>
+                <a href="#" class="nav-link" data-target="clientes"><span class="nav-icon">◉</span><span>Clientes</span></a>
+                <a href="#" class="nav-link" data-target="pacientes"><span class="nav-icon">♧</span><span>Pacientes</span></a>
+                <a href="#" class="nav-link" data-target="citas"><span class="nav-icon">◷</span><span>Citas</span></a>
+                <a href="#" class="nav-link" data-target="consultas"><span class="nav-icon">✚</span><span>Consultas</span></a>
+                <a href="#" class="nav-link" data-target="anamnesis"><span class="nav-icon">▤</span><span>Anamnesis</span></a>
+                <p class="nav-label">Inventario y clínica</p>
+                <a href="#" class="nav-link" data-target="medicamentos"><span class="nav-icon">▥</span><span>Medicamentos</span></a>
+                <a href="#" class="nav-link" data-target="lotes"><span class="nav-icon">▦</span><span>Lotes</span></a>
+                <a href="#" class="nav-link" data-target="regvacunas"><span class="nav-icon">✣</span><span>Reg. vacunas</span></a>
+                <a href="#" class="nav-link" data-target="vacunas-detalle"><span class="nav-icon">＋</span><span>Detalle vacunas</span></a>
+                <a href="#" class="nav-link" data-target="regcirugias"><span class="nav-icon">✦</span><span>Reg. cirugías</span></a>
+                <a href="#" class="nav-link" data-target="cirugias-detalle"><span class="nav-icon">◇</span><span>Detalle cirugías</span></a>
+                <p class="nav-label">Administración</p>
+                <a href="#" class="nav-link" data-target="ventas"><span class="nav-icon">＄</span><span>Ventas</span></a>
+                <a href="#" class="nav-link" data-target="venta-detalle"><span class="nav-icon">≡</span><span>Detalle de ventas</span></a>
+                <a href="#" class="nav-link" data-target="empleados"><span class="nav-icon">♙</span><span>Empleados</span></a>
+                <a href="#" class="nav-link" data-target="roles"><span class="nav-icon">⚙</span><span>Roles</span></a>
+                <a href="#" class="nav-link" data-target="nacionalidades"><span class="nav-icon">◎</span><span>Nacionalidades</span></a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button id="menuToggle" class="menu-btn" type="button" aria-label="Mostrar u ocultar menú">☰</button>
+                    <div><p class="eyebrow">Panel principal</p><h1 id="topbarTitle">Resumen general</h1></div>
+                </div>
+                <div class="connection-box">
+                    <label for="apiBase">API</label>
+                    <input id="apiBase" type="url" placeholder="http://localhost:3000" spellcheck="false">
+                    <button id="saveApiBase" class="button button-small" type="button">Conectar</button>
+                    <span id="connectionStatus" class="status-dot" title="Estado de conexión"></span>
+                </div>
+            </header>
+
+            <section class="content-area">
+                <section id="overviewView" class="overview-view">
+                    <div class="welcome-card">
+                        <div><p class="eyebrow">Centro de operaciones</p><h2>Todo bajo control</h2><p>Consulta y administra la información de tu clínica desde un solo lugar.</p></div>
+                        <div class="welcome-mark">✦</div>
+                    </div>
+                    <div id="statsGrid" class="stats-grid" aria-live="polite"></div>
+                    <div class="overview-grid">
+                        <div class="content-card">
+                            <div class="card-heading"><div><p class="eyebrow">Atajos</p><h3>Acciones frecuentes</h3></div></div>
+                            <div class="quick-actions">
+                                <button class="quick-action" data-target="pacientes" type="button"><span>♧</span><b>Registrar paciente</b><small>Agregar una mascota</small></button>
+                                <button class="quick-action" data-target="citas" type="button"><span>◷</span><b>Agendar cita</b><small>Organizar la agenda</small></button>
+                                <button class="quick-action" data-target="ventas" type="button"><span>＄</span><b>Nueva venta</b><small>Crear una factura</small></button>
+                                <button class="quick-action" data-target="medicamentos" type="button"><span>▥</span><b>Ver inventario</b><small>Revisar existencias</small></button>
+                            </div>
+                        </div>
+                        <div class="content-card api-help-card">
+                            <div class="card-heading"><div><p class="eyebrow">Conexión</p><h3>Estado de la API</h3></div><span id="healthBadge" class="badge neutral">Sin comprobar</span></div>
+                            <p id="healthMessage">Configura la URL de tu backend y pulsa «Conectar». Por defecto se usa <code>http://localhost:3000</code>.</p>
+                            <button id="checkApi" class="button button-secondary" type="button">Comprobar conexión</button>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="recordsView" class="records-view hidden">
+                    <div class="content-card records-card">
+                        <div class="card-heading records-heading">
+                            <div><p class="eyebrow" id="sectionEyebrow">Gestión</p><h2 id="cardTitle">Registros</h2><p id="sectionDescription" class="section-description"></p></div>
+                            <div class="toolbar">
+                                <div id="ventaFilter" class="inline-filter hidden"><input id="ventaFilterId" type="number" min="1" placeholder="ID de venta"><button id="filterVentaDetails" class="button button-secondary" type="button">Filtrar</button></div>
+                                <button id="refreshRecords" class="button button-secondary" type="button">↻ Actualizar</button>
+                                <button id="newRecord" class="button" type="button">＋ Nuevo registro</button>
+                            </div>
+                        </div>
+                        <div id="tableContainer" class="table-wrap" aria-live="polite"></div>
+                    </div>
+                </section>
+            </section>
+            <footer class="app-footer">
+                <div class="footer-brand">
+                    <img src="../pictures/logo.png" alt="Logo de Veterinaria Sonrisas" class="footer-logo">
+                    <div><strong>Veterinaria Sonrisas</strong><span>Atención veterinaria y farmacia para mascotas</span></div>
+                </div>
+                <div class="footer-details"><span>Gestión de pacientes</span><span>Inventario y ventas</span><span>© 2026 Veterinaria Sonrisas</span></div>
+            </footer>
+        </main>
+    </div>
+
+    <div id="entityModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-backdrop" data-close-modal></div>
+        <div class="modal-card">
+            <div class="modal-header"><div><p class="eyebrow" id="modalEyebrow">Registro</p><h2 id="modalTitle">Nuevo registro</h2></div><button class="modal-close" type="button" data-close-modal aria-label="Cerrar">×</button></div>
+            <form id="entityForm" novalidate>
+                <div id="formFields" class="form-grid"></div>
+                <div id="salePartyDetails" class="sale-party-details hidden">
+                    <div class="form-field"><label for="saleClientNit">NIT del cliente</label><input id="saleClientNit" type="text" readonly placeholder="Se mostrará al seleccionar un cliente"></div>
+                    <div class="form-field"><label for="saleEmployeeRole">Cargo del empleado</label><input id="saleEmployeeRole" type="text" readonly placeholder="Se mostrará al seleccionar un empleado"></div>
+                </div>
+                <div id="saleWorkflow" class="sale-workflow hidden">
+                    <div class="sale-panel">
+                        <div class="sale-panel-heading"><div><p class="eyebrow">Cliente</p><h3>¿Es un cliente nuevo?</h3></div><button id="toggleClientForm" class="button button-secondary button-small" type="button">＋ Nuevo cliente</button></div>
+                        <p class="sale-panel-copy">Puedes registrarlo sin salir de esta venta y quedará seleccionado automáticamente.</p>
+                        <div id="quickClientForm" class="quick-client-form hidden">
+                            <div class="mini-form-grid">
+                                <div class="form-field"><label for="quickClientNit">NIT</label><input id="quickClientNit" type="text" value="CF" maxlength="20"></div>
+                                <div class="form-field"><label for="quickClientName">Nombre *</label><input id="quickClientName" type="text"></div>
+                                <div class="form-field"><label for="quickClientLastName">Apellido *</label><input id="quickClientLastName" type="text"></div>
+                                <div class="form-field"><label for="quickClientPhone">Teléfono *</label><input id="quickClientPhone" class="phone-input" type="tel" maxlength="10" inputmode="numeric" pattern="[0-9]{1,10}"></div>
+                                <div class="form-field"><label for="quickClientEmail">Correo</label><input id="quickClientEmail" type="email"></div>
+                                <div class="form-field"><label for="quickClientAddress">Dirección</label><input id="quickClientAddress" type="text"></div>
+                            </div>
+                            <div class="quick-client-actions"><button id="cancelQuickClient" class="button button-secondary button-small" type="button">Cancelar</button><button id="saveQuickClient" class="button button-small" type="button">Guardar cliente</button></div>
+                        </div>
+                    </div>
+                    <div class="sale-panel">
+                        <div class="sale-panel-heading"><div><p class="eyebrow">Inventario</p><h3>Medicamentos de la venta</h3></div><span id="saleStockHint" class="stock-hint">Se descuenta del lote al guardar</span></div>
+                        <div id="saleItems" class="sale-items"></div>
+                        <button id="addSaleItem" class="add-item-button" type="button">＋ Agregar medicamento</button>
+                    </div>
+                </div>
+                <div id="appointmentWorkflow" class="appointment-workflow hidden">
+                    <div class="sale-panel">
+                        <div class="sale-panel-heading"><div><p class="eyebrow">Cliente</p><h3>Crear cliente para esta cita</h3></div><button id="toggleAppointmentClientForm" class="button button-secondary button-small" type="button">＋ Nuevo cliente</button></div>
+                        <p class="sale-panel-copy">Registra al responsable sin salir del formulario de la cita.</p>
+                        <div id="appointmentClientForm" class="quick-client-form hidden">
+                            <div class="mini-form-grid">
+                                <div class="form-field"><label for="appointmentClientNit">NIT</label><input id="appointmentClientNit" type="text" value="CF" maxlength="20"></div>
+                                <div class="form-field"><label for="appointmentClientName">Nombre *</label><input id="appointmentClientName" type="text"></div>
+                                <div class="form-field"><label for="appointmentClientLastName">Apellido *</label><input id="appointmentClientLastName" type="text"></div>
+                                <div class="form-field"><label for="appointmentClientPhone">Teléfono *</label><input id="appointmentClientPhone" class="phone-input" type="tel" maxlength="10" inputmode="numeric" pattern="[0-9]{1,10}"></div>
+                                <div class="form-field"><label for="appointmentClientEmail">Correo</label><input id="appointmentClientEmail" type="email"></div>
+                                <div class="form-field"><label for="appointmentClientAddress">Dirección</label><input id="appointmentClientAddress" type="text"></div>
+                            </div>
+                            <div class="quick-client-actions"><button id="cancelAppointmentClient" class="button button-secondary button-small" type="button">Cancelar</button><button id="saveAppointmentClient" class="button button-small" type="button">Guardar cliente</button></div>
+                        </div>
+                    </div>
+                    <div class="sale-panel">
+                        <div class="sale-panel-heading"><div><p class="eyebrow">Paciente</p><h3>Crear paciente y relacionarlo</h3></div><button id="toggleAppointmentPatientForm" class="button button-secondary button-small" type="button">＋ Nuevo paciente</button></div>
+                        <p class="sale-panel-copy">Elige el cliente responsable y el paciente quedará relacionado automáticamente.</p>
+                        <div id="appointmentPatientForm" class="quick-client-form hidden">
+                            <div class="mini-form-grid">
+                                <div class="form-field wide-field"><label for="appointmentPatientClient">Cliente / dueño *</label><select id="appointmentPatientClient"><option value="">Selecciona un cliente</option></select></div>
+                                <div class="form-field"><label for="appointmentPatientName">Nombre del paciente *</label><input id="appointmentPatientName" type="text"></div>
+                                <div class="form-field"><label for="appointmentPatientSpecies">Especie *</label><input id="appointmentPatientSpecies" type="text" placeholder="Perro, gato, conejo..."></div>
+                                <div class="form-field"><label for="appointmentPatientBreed">Raza</label><input id="appointmentPatientBreed" type="text"></div>
+                                <div class="form-field"><label for="appointmentPatientSex">Sexo</label><select id="appointmentPatientSex"><option value="">Selecciona una opción</option><option value="M">Macho</option><option value="H">Hembra</option></select></div>
+                                <div class="form-field"><label for="appointmentPatientColor">Color</label><input id="appointmentPatientColor" type="text"></div>
+                                <div class="form-field"><label for="appointmentPatientBirthDate">Fecha de nacimiento</label><input id="appointmentPatientBirthDate" type="date"></div>
+                                <div class="form-field"><label for="appointmentPatientWeight">Peso (kg)</label><input id="appointmentPatientWeight" type="number" min="0" step="0.01"></div>
+                            </div>
+                            <div class="quick-client-actions"><button id="cancelAppointmentPatient" class="button button-secondary button-small" type="button">Cancelar</button><button id="saveAppointmentPatient" class="button button-small" type="button">Guardar paciente</button></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-actions"><button class="button button-secondary" type="button" data-close-modal>Cancelar</button><button id="submitEntity" class="button" type="submit">Guardar registro</button></div>
+            </form>
+        </div>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="../js/app.js"></script>
+</body>
+</html>
