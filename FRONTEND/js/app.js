@@ -286,123 +286,115 @@ function renderCalendar(resource, rows) {
     container.innerHTML = `<div class="calendar-toolbar"><div><p class="eyebrow">Agenda mensual</p><h3>${escapeHtml(calendarMonthLabel(currentMonth))}</h3><p class="calendar-summary">${rows.length} cita${rows.length === 1 ? '' : 's'} registradas</p></div><div class="calendar-controls"><button class="button button-secondary button-small" data-calendar-action="today" type="button">Hoy</button><button class="button button-secondary button-small" data-calendar-action="prev" type="button" aria-label="Mes anterior">‹</button><button class="button button-secondary button-small" data-calendar-action="next" type="button" aria-label="Mes siguiente">›</button></div></div><div class="calendar-weekdays">${weekdays.map((day) => `<span>${day}</span>`).join('')}</div><div class="calendar-grid">${dayCells}</div><div class="calendar-legend"><span><i class="legend-dot pending"></i>Pendiente</span><span><i class="legend-dot confirmed"></i>Confirmada</span><span><i class="legend-dot completed"></i>Atendida</span><span><i class="legend-dot cancelled"></i>Cancelada</span></div>`;
 }
 
-const winAnsiCharacters = {
-    'á': 0xe1, 'é': 0xe9, 'í': 0xed, 'ó': 0xf3, 'ú': 0xfa, 'ñ': 0xf1, 'ü': 0xfc,
-    'Á': 0xc1, 'É': 0xc9, 'Í': 0xcd, 'Ó': 0xd3, 'Ú': 0xda, 'Ñ': 0xd1, 'Ü': 0xdc,
-    '¿': 0xbf, '¡': 0xa1, '·': 0xb7,
-};
-
-function pdfHexText(value) {
-    const bytes = [...String(value ?? '')].map((character) => winAnsiCharacters[character] ?? (character.charCodeAt(0) <= 255 ? character.charCodeAt(0) : 63));
-    return `<${bytes.map((byte) => byte.toString(16).padStart(2, '0')).join('')}>`;
+// ---------------------------------------------------------------------------
+// Comprobante de venta en PDF. El estilo (logo, colores, membrete, tabla y pie)
+// viene de marca.js; aquí solo se arman los datos de la venta.
+// ---------------------------------------------------------------------------
+function receiptMoney(value) {
+    return `Q ${Number(value || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function pdfText(x, y, value, size = 10, font = 'F1', color = '0.12 0.20 0.30') {
-    return `${color} rg BT /${font} ${size} Tf ${x} ${y} Td ${pdfHexText(value)} Tj ET`;
+function receiptDate(value) {
+    const text = String(value || '').slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text.split('-').reverse().join('/') : (text || '—');
 }
 
-function pdfRect(x, y, width, height, color) {
-    return `${color} rg ${x} ${y} ${width} ${height} re f`;
+function receiptDateTime(value) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('es-GT', { dateStyle: 'short', timeStyle: 'short' });
 }
 
-function pdfLine(x1, y1, x2, y2, color = '0.86 0.90 0.90') {
-    return `${color} RG ${x1} ${y1} m ${x2} ${y2} l S`;
-}
-
-function truncateText(value, maxLength) {
-    const text = String(value ?? '');
-    return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
-}
-
-function formatReceiptMoney(value) {
-    return `Q ${Number(value || 0).toFixed(2)}`;
-}
-
-function buildReceiptContent(sale, items, pageItems, pageNumber, totalPages) {
-    const content = [];
+function buildReceiptPdf(sale, items) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'letter', compress: true });
+    const colors = marcaPdf.colores();
+    const margin = marcaPdf.MARGEN;
+    const width = doc.internal.pageSize.getWidth();
+    const height = doc.internal.pageSize.getHeight();
+    const voided = sale.estado === 'Anulada';
     const client = sale.cliente || {};
-    const employee = sale.empleado || {};
-    const clientName = relationLabel(client, 'clientes') || `Cliente #${sale.idCliente}`;
-    const employeeName = relationLabel(employee, 'empleados') || `Empleado #${sale.idEmpleado}`;
-    const employeeRole = employee.rol?.nombreRol || 'Personal veterinario';
-    const invoice = sale.noFactura || `FAC-${String(sale.idVenta).padStart(4, '0')}`;
+    const invoice = sale.noFactura || `FAC-${String(sale.idVenta).padStart(6, '0')}`;
+    // La marca de agua se dibuja antes que el contenido de cada página, para quedar detrás
+    const watermark = () => { if (voided) marcaPdf.marcaAgua(doc, 'ANULADA'); };
 
-    content.push(pdfRect(0, 742, 595, 100, '0.09 0.20 0.30'));
-    content.push(pdfText(45, 802, 'VETERINARIA SONRISAS', 18, 'F2', '1 1 1'));
-    content.push(pdfText(45, 780, 'COMPROBANTE DE VENTA', 10, 'F1', '0.66 0.88 0.88'));
-    content.push(pdfText(390, 802, invoice, 14, 'F2', '1 1 1'));
-    content.push(pdfText(390, 780, `Venta #${sale.idVenta}`, 9, 'F1', '0.82 0.92 0.92'));
+    watermark();
+    let y = marcaPdf.encabezado(doc, { titulo: 'COMPROBANTE DE VENTA', destacado: invoice, subtitulo: `Venta #${sale.idVenta}` });
 
-    if (pageNumber === 1) {
-        content.push(pdfText(45, 704, 'CLIENTE', 8, 'F2', '0.26 0.60 0.62'));
-        content.push(pdfText(45, 684, truncateText(clientName, 40), 11, 'F2'));
-        content.push(pdfText(45, 665, `NIT: ${client.nit || 'CF'}`, 9, 'F1', '0.35 0.43 0.48'));
-        content.push(pdfText(315, 704, 'EMPLEADO', 8, 'F2', '0.26 0.60 0.62'));
-        content.push(pdfText(315, 684, truncateText(employeeName, 35), 11, 'F2'));
-        content.push(pdfText(315, 665, `Cargo: ${truncateText(employeeRole, 28)}`, 9, 'F1', '0.35 0.43 0.48'));
-        content.push(pdfText(45, 635, `Fecha: ${String(sale.fechaVenta || '').slice(0, 10) || '—'}`, 9, 'F1', '0.35 0.43 0.48'));
-        content.push(pdfText(315, 635, `Hora: ${sale.horaVenta || '—'}`, 9, 'F1', '0.35 0.43 0.48'));
-    }
+    // Datos del cliente y de la venta en dos columnas
+    const blockWidth = (width - 2 * margin - 16) / 2;
+    const clientHeight = marcaPdf.bloqueDatos(doc, margin, y, blockWidth, 'Cliente', [
+        ['Nombre', relationLabel(client, 'clientes') || `Cliente #${sale.idCliente}`],
+        ['NIT', client.nit || 'CF'],
+        ['Dirección', client.direccion || '—'],
+        ['Teléfono', client.telefono || '—'],
+    ]);
+    const saleHeight = marcaPdf.bloqueDatos(doc, margin + blockWidth + 16, y, blockWidth, 'Venta', [
+        ['Fecha', receiptDate(sale.fechaVenta)],
+        ['Hora', String(sale.horaVenta || '—').slice(0, 5)],
+        ['Atendió', sale.empleado ? relationLabel(sale.empleado, 'empleados') : `Empleado #${sale.idEmpleado}`],
+        ['Estado', sale.estado || 'Emitida'],
+    ]);
+    y += Math.max(clientHeight, saleHeight) + 18;
 
-    const tableTop = pageNumber === 1 ? 605 : 710;
-    content.push(pdfRect(45, tableTop - 18, 505, 22, '0.90 0.96 0.95'));
-    content.push(pdfText(52, tableTop - 11, 'PRODUCTO', 8, 'F2', '0.09 0.20 0.30'));
-    content.push(pdfText(300, tableTop - 11, 'LOTE', 8, 'F2', '0.09 0.20 0.30'));
-    content.push(pdfText(402, tableTop - 11, 'CANT.', 8, 'F2', '0.09 0.20 0.30'));
-    content.push(pdfText(445, tableTop - 11, 'PRECIO', 8, 'F2', '0.09 0.20 0.30'));
-    content.push(pdfText(505, tableTop - 11, 'IMPORTE', 8, 'F2', '0.09 0.20 0.30'));
-
-    let y = tableTop - 40;
-    if (!pageItems.length) {
-        content.push(pdfText(52, y, 'Sin medicamentos registrados', 9, 'F1', '0.45 0.53 0.56'));
-        y -= 22;
-    } else {
-        pageItems.forEach((item) => {
-            content.push(pdfLine(45, y - 8, 550, y - 8));
-            content.push(pdfText(52, y, truncateText(item.product, 34), 8.5));
-            content.push(pdfText(300, y, truncateText(item.lot, 15), 8.5));
-            content.push(pdfText(405, y, String(item.quantity), 8.5));
-            content.push(pdfText(445, y, formatReceiptMoney(item.price), 8.5));
-            content.push(pdfText(505, y, formatReceiptMoney(item.amount), 8.5));
-            y -= 23;
-        });
-    }
-
-    if (pageNumber === totalPages) {
-        content.push(pdfLine(360, y - 2, 550, y - 2, '0.26 0.60 0.62'));
-        content.push(pdfText(405, y - 24, 'TOTAL', 10, 'F2'));
-        content.push(pdfText(495, y - 24, formatReceiptMoney(items.reduce((sum, item) => sum + item.amount, 0)), 10, 'F2', '0.09 0.50 0.55'));
-        content.push(pdfText(45, 72, 'Gracias por su preferencia.', 9, 'F1', '0.45 0.53 0.56'));
-    }
-    content.push(pdfText(480, 38, `${pageNumber}/${totalPages}`, 8, 'F1', '0.55 0.62 0.64'));
-    return content.join('\n');
-}
-
-function createPdfDocument(contents) {
-    const pageCount = contents.length;
-    const pageRefs = contents.map((_, index) => 5 + index);
-    const contentRefs = contents.map((_, index) => 5 + pageCount + index);
-    const objects = [
-        '<< /Type /Catalog /Pages 2 0 R >>',
-        `<< /Type /Pages /Kids [${pageRefs.map((ref) => `${ref} 0 R`).join(' ')}] /Count ${pageCount} >>`,
-        '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
-        '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>',
-    ];
-    contents.forEach((_, index) => {
-        objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentRefs[index]} 0 R >>`);
+    // Detalle de medicamentos
+    doc.autoTable({
+        ...marcaPdf.estiloTabla,
+        startY: y,
+        head: [['No.', 'Medicamento', 'Presentación', 'Lote', 'Cantidad', 'Precio unitario', 'Subtotal']],
+        body: items.length
+            ? items.map((item, index) => [index + 1, item.product, item.presentation, item.lot, item.quantity.toLocaleString('es-GT'), receiptMoney(item.price), receiptMoney(item.amount)])
+            : [[{ content: 'Sin medicamentos registrados', colSpan: 7, styles: { halign: 'center', textColor: colors.tenue } }]],
+        columnStyles: { 0: { halign: 'center', cellWidth: 30 }, ...marcaPdf.alinearDerecha([4, 5, 6]) },
+        // Anulada: filas sin relleno para que la marca de agua se vea entera detrás del texto
+        ...(voided ? { alternateRowStyles: {} } : {}),
+        didParseCell: (data) => { if (data.section === 'head' && data.column.index >= 4) data.cell.styles.halign = 'right'; },
+        willDrawPage: (data) => { if (data.pageNumber > 1) watermark(); },
+        didDrawPage: (data) => { if (data.pageNumber > 1) marcaPdf.encabezadoContinuacion(doc, `Comprobante de venta ${invoice}`); },
     });
-    contents.forEach((content) => objects.push(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`));
-    let pdf = '%PDF-1.4\n%generated-by-vet-sonrisas\n';
-    const offsets = [0];
-    objects.forEach((object, index) => {
-        offsets.push(pdf.length);
-        pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
-    });
-    const xrefOffset = pdf.length;
-    pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-    for (let index = 1; index < offsets.length; index += 1) pdf += `${String(offsets[index]).padStart(10, '0')} 00000 n \n`;
-    pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-    return new Blob([pdf], { type: 'application/pdf' });
+    y = doc.lastAutoTable.finalY + 16;
+
+    // Caja de totales a la derecha (si no cabe, pasa a una página nueva)
+    const total = items.reduce((sum, item) => sum + item.amount, 0);
+    const needed = 74 + (voided ? 52 : 0);
+    if (y + needed > height - 70) {
+        doc.addPage();
+        watermark();
+        marcaPdf.encabezadoContinuacion(doc, `Comprobante de venta ${invoice}`);
+        y = 76;
+    }
+    const boxWidth = 220;
+    const boxX = width - margin - boxWidth;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...colors.texto);
+    doc.text('Subtotal', boxX + 12, y + 14);
+    doc.text(receiptMoney(total), width - margin - 12, y + 14, { align: 'right' });
+    doc.setFillColor(...colors.suave);
+    doc.rect(boxX, y + 24, boxWidth, 34, 'F');
+    doc.setFillColor(...colors.principal);
+    doc.rect(boxX, y + 24, boxWidth, 1.4, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...colors.principal);
+    doc.setFontSize(11);
+    doc.text('TOTAL', boxX + 12, y + 46);
+    doc.setFontSize(16);
+    doc.text(receiptMoney(total), width - margin - 12, y + 47, { align: 'right' });
+    y += 74;
+
+    // Venta anulada: motivo y fecha debajo de los totales
+    if (voided) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(...colors.peligro);
+        doc.text(`Venta anulada el ${receiptDateTime(sale.fechaAnulacion)}`, width - margin, y, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...colors.texto);
+        const reason = doc.splitTextToSize(`Motivo: ${sale.motivoAnulacion || 'sin motivo registrado'}`, boxWidth + 120);
+        doc.text(reason, width - margin, y + 13, { align: 'right' });
+    }
+
+    marcaPdf.pie(doc, { notas: ['Gracias por confiar en Veterinaria Sonrisas', 'Documento no válido como factura fiscal (FEL)'] });
+    return doc;
 }
 
 async function downloadSaleReceipt(id) {
@@ -411,22 +403,19 @@ async function downloadSaleReceipt(id) {
         const [sale, details] = await Promise.all([apiRequest(`ventas/${id}`), apiRequest(`venta-detalle/venta/${id}`)]);
         if (!state.relationCache.lotes) state.relationCache.lotes = await apiRequest(resources.lotes.endpoint);
         const items = details.map((detail) => {
-            const lot = detail.lote || state.relationCache.lotes.find((item) => String(item.idLote) === String(detail.idLote)) || {};
+            // El detalle trae el lote sin su medicamento; GET /lotes sí lo trae
+            const cached = state.relationCache.lotes.find((item) => String(item.idLote) === String(detail.idLote)) || {};
+            const lot = { ...cached, ...(detail.lote || {}), medicamento: detail.lote?.medicamento || cached.medicamento };
             const quantity = Number(detail.cantMedicamento || 0);
             const price = Number(detail.precioVenta || 0);
-            return { product: lot.medicamento?.nombreMed || 'Medicamento', lot: lot.codigoLote || `#${detail.idLote}`, quantity, price, amount: quantity * price };
+            return {
+                product: lot.medicamento?.nombreMed || 'Medicamento',
+                presentation: lot.medicamento?.presentacion || '—',
+                lot: lot.codigoLote || `#${detail.idLote}`,
+                quantity, price, amount: quantity * price,
+            };
         });
-        const chunks = [];
-        for (let index = 0; index < items.length; index += 18) chunks.push(items.slice(index, index + 18));
-        if (!chunks.length) chunks.push([]);
-        const contents = chunks.map((chunk, index) => buildReceiptContent(sale, items, chunk, index + 1, chunks.length));
-        const blob = createPdfDocument(contents);
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.href = url;
-        link.download = `${sale.noFactura || `venta-${id}`}.pdf`;
-        link.click();
-        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        buildReceiptPdf(sale, items).save(`${sale.noFactura || `venta-${id}`}.pdf`);
         showToast('Comprobante descargado correctamente.');
     } catch (error) { showToast(`No se pudo generar el comprobante: ${error.message}`, 'error'); }
 }
