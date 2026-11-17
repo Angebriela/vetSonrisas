@@ -8,8 +8,10 @@ export class ReportesService {
   constructor(private readonly dataSource: DataSource) {}
 
   // Catálogo para que el frontend dibuje el menú y los filtros
-  listar() {
-    return REPORTES.map(({ funcion, ...publico }) => publico);
+  listar(permitidos: string[]) {
+    return REPORTES
+      .filter((reporte) => permitidos.includes(reporte.clave))
+      .map(({ funcion, ...publico }) => publico);
   }
 
   async ejecutar(clave: string, query: Record<string, string | undefined>) {
