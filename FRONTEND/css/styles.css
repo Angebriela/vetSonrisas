@@ -208,27 +208,121 @@ tr:hover td { background: #fbfdfc; }
 /* Botones de acción con texto (Anular, + Lote) */
 .icon-button.text-action { font-size: .68rem; font-weight: 700; padding: 0 8px; width: auto; }
 
-/* ---------- Página de reportes ---------- */
-.report-layout { align-items: start; display: grid; gap: 18px; grid-template-columns: 280px 1fr; }
-.report-menu { max-height: calc(100vh - 150px); overflow-y: auto; padding: 14px; }
-.report-menu h4 { color: var(--muted); font-size: .68rem; letter-spacing: .08em; margin: 14px 6px 6px; text-transform: uppercase; }
-.report-menu h4:first-child { margin-top: 2px; }
-.report-item { background: transparent; border: 0; border-radius: 8px; color: var(--ink); display: block; font-size: .84rem; padding: 8px 10px; text-align: left; width: 100%; }
-.report-item:hover { background: #edf5f3; }
-.report-item.active { background: var(--navy); color: var(--white); font-weight: 700; }
-.report-filters { align-items: end; display: flex; flex-wrap: wrap; gap: 12px; margin: 14px 0 6px; }
-.report-filters .form-field { margin: 0; min-width: 170px; }
-.report-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 16px; }
-.report-summary { color: var(--muted); font-size: .8rem; margin: 0 0 10px; }
+/* ---------- Página de reportes ----------
+   Todo va bajo .report-*: no cambia ninguna regla que use dashboard.html.
+   Solo usa las variables de :root; los tonos suaves salen de color-mix sobre ellas.
+   La tabla en pantalla imita el PDF exportado: encabezado navy, filas alternas y totales en mint. */
+.report-page {
+    --report-text: color-mix(in srgb, var(--ink) 78%, var(--white));      /* texto secundario legible (≈7:1) */
+    --report-zebra: color-mix(in srgb, var(--mint) 45%, var(--white));
+    --report-hover: color-mix(in srgb, var(--aqua) 12%, var(--white));
+    --report-tint: color-mix(in srgb, var(--aqua) 10%, var(--white));
+    --report-topbar: 76px;
+}
+.report-page .main-content { min-height: 100vh; }
+.report-page :is(a, button, select, input, [tabindex]):focus-visible { outline: 2px solid var(--navy-soft); outline-offset: 2px; }
+.report-sr-only { border: 0; clip: rect(0 0 0 0); height: 1px; margin: -1px; overflow: hidden; padding: 0; position: absolute; white-space: nowrap; width: 1px; }
+
+/* Barra superior: migas de pan en lugar de la barra lateral */
+.report-page .topbar { min-height: var(--report-topbar); padding-block: 12px; }
+.report-home { align-items: center; display: flex; gap: 14px; min-width: 0; }
+.report-home-logo { background: var(--white); border: 1px solid var(--line); border-radius: 11px; flex: 0 0 auto; height: 44px; object-fit: contain; padding: 3px; width: 44px; }
+.report-breadcrumb { align-items: baseline; display: flex; flex-wrap: wrap; gap: 0 8px; list-style: none; margin: 0; padding: 0; }
+.report-breadcrumb li { align-items: baseline; display: flex; gap: 8px; }
+.report-breadcrumb li + li::before { color: var(--report-text); content: '/'; }
+.report-breadcrumb a { border-radius: 4px; color: var(--report-text); font-size: .86rem; font-weight: 600; text-decoration: none; }
+.report-breadcrumb a:hover { color: var(--navy); text-decoration: underline; text-underline-offset: 3px; }
+.report-breadcrumb h1 { font-size: 1.34rem; }
+
+/* Distribución: minmax(0, 1fr) + min-width: 0 evitan que una tabla ancha estire la página */
+.report-layout { align-items: start; display: grid; gap: 20px; grid-template-columns: 248px minmax(0, 1fr); }
+.report-main { min-width: 0; }
+
+/* Menú de reportes */
+.report-menu { max-height: calc(100vh - var(--report-topbar) - 48px); overflow-y: auto; overscroll-behavior: contain; padding: 14px 10px; position: sticky; top: calc(var(--report-topbar) + 20px); }
+.report-menu-group + .report-menu-group { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; }
+.report-menu-heading { color: var(--navy); font-size: .8rem; font-weight: 800; margin: 2px 10px 6px; }
+.report-item { background: transparent; border: 0; border-radius: 7px; box-shadow: inset 3px 0 0 transparent; color: var(--report-text); display: block; font-size: .83rem; line-height: 1.35; padding: 7px 10px 7px 13px; text-align: left; width: 100%; }
+.report-item:hover { background: var(--report-hover); color: var(--navy); }
+.report-item[aria-current="true"] { background: var(--report-tint); box-shadow: inset 3px 0 0 var(--aqua); color: var(--navy); font-weight: 700; }
+.report-picker { display: none; }
+.report-picker span { color: var(--navy-soft); display: block; font-size: .74rem; font-weight: 700; margin-bottom: 6px; }
+.report-picker select { background: var(--white); border: 1px solid var(--line); border-radius: 7px; color: var(--ink); padding: 10px 11px; width: 100%; }
+
+/* Encabezado del reporte */
+.report-heading { align-items: flex-start; display: flex; gap: 12px; justify-content: space-between; }
+.report-heading h2 { font-size: 1.32rem; line-height: 1.25; margin: 0; }
+.report-group { border: 1px solid var(--line); border-radius: 999px; color: var(--navy-soft); flex: 0 0 auto; font-size: .74rem; font-weight: 700; margin: 2px 0 0; padding: 4px 10px; }
+.report-group:empty { display: none; }
+.report-page .report-description { color: var(--report-text); font-size: .84rem; line-height: 1.5; margin: 6px 0 0; max-width: 75ch; }
+
+/* Barra de filtros: los campos van en una fila y bajan ordenados; Generar es la acción
+   principal y Excel/PDF quedan agrupados a la derecha */
+.report-toolbar { align-items: flex-end; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 14px 20px; margin-top: 18px; padding-bottom: 18px; }
+.report-filters { display: flex; flex: 999 1 420px; flex-wrap: wrap; gap: 12px; min-width: 0; }
+.report-filters .form-field { flex: 1 1 160px; margin: 0; max-width: 300px; }
+.report-filters .form-field label { color: var(--navy-soft); }
+.report-filters .form-field input, .report-filters .form-field select { background: var(--white); font-size: .86rem; padding: 9px 10px; }
+.report-required { color: var(--report-text); font-weight: 600; }
+.report-actions { align-items: center; display: flex; flex: 1 1 auto; flex-wrap: wrap; gap: 10px 16px; justify-content: space-between; }
+.report-page .report-run { background: var(--aqua); color: var(--navy); padding: 10px 18px; } /* navy sobre aqua: ≈6.5:1 */
+.report-export { align-items: center; display: flex; gap: 8px; }
+.report-export-label { color: var(--report-text); font-size: .76rem; font-weight: 600; }
+.report-export .button:disabled { cursor: not-allowed; opacity: .45; transform: none; }
+
+/* Resumen: filas, filtros como chips y fecha de generación */
+.report-summary { align-items: center; color: var(--report-text); display: flex; flex-wrap: wrap; font-size: .8rem; gap: 8px 14px; margin: 14px 0 12px; min-height: 26px; }
+.report-summary:empty { display: none; }
+.report-count { color: var(--navy); font-size: .9rem; font-variant-numeric: tabular-nums; }
+.report-chips { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.report-chip { background: var(--report-zebra); border: 1px solid color-mix(in srgb, var(--mint) 60%, var(--line)); border-radius: 999px; color: var(--navy); font-size: .76rem; padding: 3px 10px; }
+.report-chip span { color: var(--report-text); }
+.report-chip-empty { background: transparent; border-color: var(--line); color: var(--report-text); }
+.report-generated { margin-left: auto; }
+
+/* Tabla: scroll horizontal y vertical dentro de la zona de la tabla, nunca en la página */
+.report-scroll { border: 1px solid var(--line); border-radius: 10px; max-height: max(340px, calc(100vh - 240px)); overflow: auto; overscroll-behavior: contain; }
+.report-table { border-collapse: separate; border-spacing: 0; min-width: 100%; width: max-content; }
+.report-table th, .report-table td { max-width: none; overflow: visible; padding: 7px 12px; text-overflow: clip; white-space: nowrap; }
+.report-table thead th { background: var(--navy); color: var(--white); font-size: .74rem; font-weight: 700; letter-spacing: 0; position: sticky; text-transform: none; top: 0; vertical-align: bottom; z-index: 1; }
+.report-table td { border-bottom: 1px solid var(--line); border-top: 0; color: var(--ink); font-size: .8rem; line-height: 1.4; vertical-align: top; }
+.report-table tbody tr:nth-child(even) td { background: var(--report-zebra); }
+.report-table tbody tr:hover td { background: var(--report-hover); }
 .report-table td.num, .report-table th.num { font-variant-numeric: tabular-nums; text-align: right; }
-.report-table tfoot td { border-top: 2px solid var(--line); font-weight: 800; }
-.report-menu { background: linear-gradient(180deg, #fff, #f8fbfa); }
-.report-item { line-height: 1.45; transition: background .18s, color .18s, transform .18s; }
-.report-item.active { background: linear-gradient(120deg, var(--navy), var(--navy-soft)); box-shadow: 0 5px 14px rgba(23,50,77,.14); }
-.report-filters .form-field { flex: 1 1 190px; }
-.report-summary { background: #f3f8f6; border-radius: 8px; padding: 10px 12px; }
-.report-table { border-radius: 10px; overflow: hidden; }
-@media (max-width: 900px) { .report-layout { grid-template-columns: 1fr; } .report-menu { max-height: none; } }
+.report-cell-text { max-width: 42ch; min-width: 22ch; overflow-wrap: anywhere; white-space: normal; }
+.report-table tfoot td { background: var(--mint); border-bottom: 0; border-top: 2px solid var(--navy-soft); bottom: 0; color: var(--navy); font-weight: 800; position: sticky; }
+.report-scroll-hint { color: var(--report-text); font-size: .76rem; margin: 8px 2px 0; }
+
+/* Estados: inicial, cargando, vacío y error */
+.report-state { align-items: center; border: 1px dashed var(--line); border-radius: 10px; color: var(--report-text); display: flex; flex-direction: column; justify-content: center; min-height: 300px; padding: 32px 20px; text-align: center; }
+.report-state h3 { margin: 0 0 6px; }
+.report-state p { font-size: .84rem; line-height: 1.5; margin: 0; max-width: 52ch; }
+.report-state-mark { align-items: center; background: var(--mint); border-radius: 50%; color: var(--navy-soft); display: flex; font-size: 1.3rem; font-weight: 800; height: 46px; justify-content: center; margin-bottom: 12px; width: 46px; }
+.report-state-error { border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); border-style: solid; }
+.report-state-error .report-state-mark { background: color-mix(in srgb, var(--danger) 14%, var(--white)); color: var(--danger); }
+.report-state .report-error-detail { background: color-mix(in srgb, var(--danger) 8%, var(--white)); border-radius: 7px; color: var(--ink); margin: 12px 0 16px; padding: 9px 12px; }
+.report-state .spinner { margin-bottom: 12px; }
+
+/* Tablet y celular: el menú pasa arriba como <select> */
+@media (max-width: 900px) {
+    .report-layout { grid-template-columns: minmax(0, 1fr); }
+    .report-menu { background: transparent; border: 0; box-shadow: none; max-height: none; overflow: visible; padding: 0; position: static; }
+    .report-picker { display: block; }
+    .report-list { display: none; }
+}
+@media (max-width: 620px) {
+    .report-page .connection-box label, .report-page .connection-box input { display: none; }
+    .report-page .connection-box { width: auto; }
+    .report-page .topbar-right { flex-wrap: nowrap; gap: 12px; justify-content: flex-start; }
+    .report-page .user-box { flex: 1; justify-content: space-between; min-width: 0; }
+    .report-main { padding: 18px; }
+    .report-home-logo { height: 36px; width: 36px; }
+    .report-heading { flex-direction: column; gap: 8px; }
+    .report-filters .form-field { max-width: none; }
+    .report-generated { margin-left: 0; }
+    .report-scroll { max-height: 70vh; }
+}
+@media (prefers-reduced-motion: reduce) { .report-page *, .report-page *::before { animation-duration: .01ms !important; transition: none !important; } }
 
 /* ---------- Sesión: usuario en la barra superior ---------- */
 .topbar-right { align-items: center; display: flex; flex-wrap: wrap; gap: 18px; justify-content: flex-end; }

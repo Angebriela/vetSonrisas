@@ -7,30 +7,26 @@
     <title>Reportes · Veterinaria Sonrisas</title>
     <link rel="stylesheet" href="../css/styles.css">
 </head>
-<body>
+<body class="report-page">
+    <!-- Sin barra lateral: aquí solo tenía dos enlaces y le quitaba a la tabla el ancho que
+         necesita. Las migas de pan llevan de vuelta al panel. -->
     <div class="dashboard-layout">
-        <aside id="sidebar" class="sidebar">
-            <div class="brand">
-                <img class="brand-logo" src="../pictures/logo.png" alt="Veterinaria Sonrisas">
-                <div class="brand-copy"><strong>Veterinaria Sonrisas</strong><span>Gestión clínica</span></div>
-            </div>
-            <nav class="nav-menu" aria-label="Navegación principal">
-                <p class="nav-label">Menú principal</p>
-                <a href="dashboard.html" class="nav-link"><span class="nav-icon">⌂</span><span>Panel principal</span></a>
-                <a href="reportes.html" class="nav-link active" aria-current="page"><span class="nav-icon">▤</span><span>Reportes</span></a>
-            </nav>
-        </aside>
         <main class="main-content">
             <header class="topbar">
-                <div class="topbar-left">
-                    <button id="menuToggle" class="menu-btn" type="button" aria-label="Mostrar u ocultar menú" aria-expanded="true">☰</button>
-                    <div><p class="eyebrow">Veterinaria Sonrisas</p><h1>Reportes</h1></div>
+                <div class="report-home">
+                    <img class="report-home-logo" src="../pictures/logo.png" alt="Veterinaria Sonrisas">
+                    <nav aria-label="Ruta de navegación">
+                        <ol class="report-breadcrumb">
+                            <li><a href="dashboard.html">Panel principal</a></li>
+                            <li aria-current="page"><h1>Reportes</h1></li>
+                        </ol>
+                    </nav>
                 </div>
                 <div class="topbar-right">
                     <div class="connection-box">
-                        <label>API</label>
+                        <label for="apiBase">API</label>
                         <input id="apiBase" type="url" readonly>
-                        <span id="connectionStatus" class="status-dot" title="Estado de conexión"></span>
+                        <span id="connectionStatus" class="status-dot" title="Estado de conexión" role="img" aria-label="Estado de conexión"></span>
                     </div>
                     <div class="user-box">
                         <div class="user-copy"><strong id="userName">—</strong><span id="userRole"></span></div>
@@ -43,23 +39,30 @@
                 <div class="report-layout">
                     <aside id="reportMenu" class="content-card report-menu" aria-label="Lista de reportes"></aside>
 
-                    <div class="content-card">
-                        <p class="eyebrow" id="reportGroup">Reportes</p>
-                        <h2 id="reportTitle">Elige un reporte</h2>
-                        <p id="reportDescription" class="section-description">Selecciona un reporte de la lista, ajusta los filtros y pulsa «Generar».</p>
+                    <article class="content-card report-main" aria-labelledby="reportTitle">
+                        <header>
+                            <div class="report-heading">
+                                <h2 id="reportTitle">Elige un reporte</h2>
+                                <p id="reportGroup" class="report-group"></p>
+                            </div>
+                            <p id="reportDescription" class="report-description">Elige un reporte de la lista, ajusta los filtros y pulsa Generar.</p>
+                        </header>
 
-                        <form id="reportForm" class="hidden" novalidate>
+                        <form id="reportForm" class="report-toolbar hidden" novalidate>
                             <div id="reportFilters" class="report-filters"></div>
                             <div class="report-actions">
-                                <button class="button" type="submit">Generar</button>
-                                <button id="exportExcel" class="button button-secondary" type="button" disabled>⭳ Excel</button>
-                                <button id="exportPdf" class="button button-secondary" type="button" disabled>⭳ PDF</button>
+                                <button class="button report-run" type="submit">Generar</button>
+                                <div class="report-export" role="group" aria-label="Exportar el reporte">
+                                    <span class="report-export-label" aria-hidden="true">Exportar</span>
+                                    <button id="exportExcel" class="button button-secondary" type="button" disabled>Excel</button>
+                                    <button id="exportPdf" class="button button-secondary" type="button" disabled>PDF</button>
+                                </div>
                             </div>
                         </form>
 
-                        <p id="reportSummary" class="report-summary"></p>
-                        <div id="reportTable" class="table-wrap" aria-live="polite"></div>
-                    </div>
+                        <div id="reportSummary" class="report-summary" aria-live="polite"></div>
+                        <div id="reportTable"></div>
+                    </article>
                 </div>
             </section>
         </main>

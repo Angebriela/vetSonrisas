@@ -1,16 +1,13 @@
-// ---------------------------------------------------------------------------
+
 // Reportes · Veterinaria Sonrisas
-// Una sola pantalla sirve a los 15 reportes: el backend (GET /reportes) dice
-// qué reportes existen y qué filtros tiene cada uno, y este archivo dibuja el
-// formulario, la tabla y las exportaciones a partir de esa descripción.
-// ---------------------------------------------------------------------------
 const API_BASE = (localStorage.getItem('vet_api_base') || 'http://localhost:3000').replace(/\/$/, '');
 
 // Misma sesión que el panel (login.js la guarda en sessionStorage)
 const SESSION_TOKEN = 'vet_token';
 const SESSION_PROFILE = 'vet_perfil';
 
-const state = { catalog: [], current: null, result: null, options: {} };
+// request: número de la última petición; una respuesta vieja nunca pisa a una nueva
+const state = { catalog: [], current: null, result: null, options: {}, request: 0 };
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -65,12 +62,34 @@ function optionId(resource, item) {
     return Object.values(item)[0];
 }
 
+// Bloque de estado (inicial, cargando, vacío, error) dentro de la zona de la tabla
+function stateBlock({ mark, title, message, kind = '', role = 'status', extra = '' }) {
+    return `<div class="report-state${kind ? ` report-state-${kind}` : ''}" role="${role}">${mark}<h3>${escapeHtml(title)}</h3>${message ? `<p>${escapeHtml(message)}</p>` : ''}${extra}</div>`;
+}
+
+// El menú se dibuja dos veces con los mismos datos: como lista agrupada (pantallas
+// anchas) y como <select> con grupos (menos de 900 px). El CSS muestra uno u otro.
 function renderMenu() {
     const groups = [...new Set(state.catalog.map((report) => report.grupo))];
-    $('#reportMenu').innerHTML = groups.map((group) => `<h4>${escapeHtml(group)}</h4>${state.catalog
-        .filter((report) => report.grupo === group)
-        .map((report) => `<button class="report-item${state.current?.clave === report.clave ? ' active' : ''}" data-report="${escapeHtml(report.clave)}" type="button">${escapeHtml(report.titulo)}</button>`)
-        .join('')}`).join('');
+    const reportsOf = (group) => state.catalog.filter((report) => report.grupo === group);
+    const list = groups.map((group, index) => `<div class="report-menu-group" role="group" aria-labelledby="report-group-${index}"><h2 class="report-menu-heading" id="report-group-${index}">${escapeHtml(group)}</h2>${reportsOf(group)
+        .map((report) => `<button class="report-item" data-report="${escapeHtml(report.clave)}" type="button">${escapeHtml(report.titulo)}</button>`)
+        .join('')}</div>`).join('');
+    const options = groups.map((group) => `<optgroup label="${escapeHtml(group)}">${reportsOf(group)
+        .map((report) => `<option value="${escapeHtml(report.clave)}">${escapeHtml(report.titulo)}</option>`)
+        .join('')}</optgroup>`).join('');
+    $('#reportMenu').innerHTML = `<label class="report-picker"><span>Reporte</span><select id="reportPicker">${options}</select></label><nav class="report-list" aria-label="Reportes disponibles">${list}</nav>`;
+    markActive();
+}
+
+// Marca el reporte activo sin volver a dibujar el menú (así no se pierde el foco)
+function markActive() {
+    document.querySelectorAll('#reportMenu [data-report]').forEach((button) => {
+        if (button.dataset.report === state.current?.clave) button.setAttribute('aria-current', 'true');
+        else button.removeAttribute('aria-current');
+    });
+    const picker = $('#reportPicker');
+    if (picker && state.current) picker.value = state.current.clave;
 }
 
 async function selectReport(key) {
@@ -78,11 +97,12 @@ async function selectReport(key) {
     if (!report) return;
     state.current = report;
     state.result = null;
-    renderMenu();
-    $('#reportGroup').textContent = `Reportes · ${report.grupo}`;
+    state.request += 1; // descarta cualquier reporte anterior que aún no haya respondido
+    markActive();
+    $('#reportGroup').textContent = report.grupo;
     $('#reportTitle').textContent = report.titulo;
     $('#reportDescription').textContent = report.descripcion;
-    $('#reportSummary').textContent = '';
+    $('#reportSummary').innerHTML = '';
     $('#reportTable').innerHTML = '';
     $('#exportExcel').disabled = true;
     $('#exportPdf').disabled = true;
@@ -96,8 +116,8 @@ async function selectReport(key) {
 
     $('#reportFilters').innerHTML = report.filtros.map((filter) => {
         const id = `filter-${filter.nombre}`;
-        const required = filter.requerido ? 'required' : '';
-        const label = `<label for="${id}">${escapeHtml(filter.etiqueta)}${filter.requerido ? ' *' : ''}</label>`;
+        const required = filter.requerido ? 'required aria-required="true"' : '';
+        const label = `<label for="${id}">${escapeHtml(filter.etiqueta)}${filter.requerido ? ' <span class="report-required">(obligatorio)</span>' : ''}</label>`;
         if (filter.opciones || filter.recurso) {
             const options = filter.opciones
                 ? filter.opciones.map((option) => `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`)
@@ -109,8 +129,17 @@ async function selectReport(key) {
     }).join('');
     $('#reportForm').classList.remove('hidden');
 
-    // Los reportes sin filtro obligatorio se generan de una vez
-    if (!report.filtros.some((filter) => filter.requerido)) runReport();
+    // Los reportes sin filtro obligatorio se generan de una vez; los demás esperan al usuario
+    const requiredFilters = report.filtros.filter((filter) => filter.requerido);
+    if (!requiredFilters.length) {
+        runReport();
+        return;
+    }
+    $('#reportTable').innerHTML = stateBlock({
+        mark: '<span class="report-state-mark" aria-hidden="true">?</span>',
+        title: `Elige ${requiredFilters.map((filter) => filter.etiqueta.toLowerCase()).join(' y ')} para ver este reporte`,
+        message: 'Completa el filtro marcado como obligatorio y pulsa Generar.',
+    });
 }
 
 function isNumber(value) {
@@ -144,23 +173,68 @@ function totalsRow(result) {
     return any ? totals : null;
 }
 
+// Cómo se dibuja cada columna: números a la derecha; textos largos (más de 32
+// caracteres en alguna fila) se cortan en varias líneas; fechas, horas, códigos y
+// textos cortos nunca se cortan.
+function columnKind(column, rows) {
+    if (rows.some((row) => isNumber(row[column]))) return 'num';
+    const longest = Math.max(0, ...rows.map((row) => String(row[column] ?? '').length));
+    return longest > 32 ? 'text' : 'plain';
+}
+
+function cellHtml(kind, value) {
+    if (kind === 'text') return `<td><div class="report-cell-text">${value}</div></td>`;
+    return `<td${kind === 'num' ? ' class="num"' : ''}>${value}</td>`;
+}
+
+// Valor legible de un filtro: fechas como dd/mm/aaaa y los id con el nombre de su lista
+function filterValueText(label, value) {
+    const filter = state.current?.filtros.find((item) => item.etiqueta === label);
+    if (filter?.recurso) {
+        const item = (state.options[filter.recurso] || []).find((option) => String(optionId(filter.recurso, option)) === String(value));
+        if (item) return optionLabel(filter.recurso, item);
+    }
+    if (filter?.tipo === 'fecha' && /^\d{4}-\d{2}-\d{2}$/.test(String(value))) return String(value).split('-').reverse().join('/');
+    return String(value);
+}
+
+function renderSummary(result) {
+    const count = result.filas.length;
+    const chips = result.filtros.length
+        ? result.filtros.map((filter) => `<li class="report-chip"><span>${escapeHtml(filter.etiqueta)}:</span> ${escapeHtml(filterValueText(filter.etiqueta, filter.valor))}</li>`).join('')
+        : '<li class="report-chip report-chip-empty">Sin filtros</li>';
+    $('#reportSummary').innerHTML = `<strong class="report-count">${count.toLocaleString('es-GT')} ${count === 1 ? 'fila' : 'filas'}</strong><ul class="report-chips" aria-label="Filtros aplicados">${chips}</ul><span class="report-generated">${escapeHtml(generatedText())}</span>`;
+}
+
 function renderResult() {
     const result = state.result;
     const container = $('#reportTable');
-    const filters = result.filtros.length ? result.filtros.map((filter) => `${filter.etiqueta}: ${filter.valor}`).join(' · ') : 'Sin filtros';
-    $('#reportSummary').textContent = `${result.filas.length} fila${result.filas.length === 1 ? '' : 's'} · ${filters}`;
+    renderSummary(result);
     $('#exportExcel').disabled = result.filas.length === 0;
     $('#exportPdf').disabled = result.filas.length === 0;
     if (!result.filas.length) {
-        container.innerHTML = '<div class="empty-state"><span>⌁</span><h3>Sin resultados</h3><p>No hay datos para los filtros elegidos.</p></div>';
+        container.innerHTML = stateBlock({
+            mark: '<span class="report-state-mark" aria-hidden="true">0</span>',
+            title: 'Sin resultados para estos filtros',
+            message: 'Amplía el rango de fechas o quita algún filtro y vuelve a generar el reporte.',
+        });
         return;
     }
-    const numeric = Object.fromEntries(result.columnas.map((column) => [column, result.filas.some((row) => isNumber(row[column]))]));
-    const head = result.columnas.map((column) => `<th class="${numeric[column] ? 'num' : ''}">${escapeHtml(column)}</th>`).join('');
-    const body = result.filas.map((row) => `<tr>${result.columnas.map((column) => `<td class="${numeric[column] ? 'num' : ''}">${escapeHtml(formatCell(row[column], column))}</td>`).join('')}</tr>`).join('');
+    const kinds = Object.fromEntries(result.columnas.map((column) => [column, columnKind(column, result.filas)]));
+    const head = result.columnas.map((column) => `<th scope="col"${kinds[column] === 'num' ? ' class="num"' : ''}>${escapeHtml(column)}</th>`).join('');
+    const body = result.filas.map((row) => `<tr>${result.columnas.map((column) => cellHtml(kinds[column], escapeHtml(formatCell(row[column], column)))).join('')}</tr>`).join('');
     const totals = totalsRow(result);
-    const foot = totals ? `<tfoot><tr>${result.columnas.map((column, index) => `<td class="${numeric[column] ? 'num' : ''}">${index === 0 && totals[column] === undefined ? 'Total' : (totals[column] !== undefined ? escapeHtml(formatCell(totals[column], column)) : '')}</td>`).join('')}</tr></tfoot>` : '';
-    container.innerHTML = `<table class="report-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody>${foot}</table>`;
+    const foot = totals ? `<tfoot><tr>${result.columnas.map((column, index) => `<td${kinds[column] === 'num' ? ' class="num"' : ''}>${index === 0 && totals[column] === undefined ? 'Total' : (totals[column] !== undefined ? escapeHtml(formatCell(totals[column], column)) : '')}</td>`).join('')}</tr></tfoot>` : '';
+    // La zona con scroll es enfocable para poder recorrerla con el teclado
+    container.innerHTML = `<div class="report-scroll" role="region" aria-label="Tabla del reporte ${escapeHtml(result.titulo)}" tabindex="0"><table class="report-table"><caption class="report-sr-only">${escapeHtml(result.titulo)}: ${result.filas.length} filas</caption><thead><tr>${head}</tr></thead><tbody>${body}</tbody>${foot}</table></div><p class="report-scroll-hint hidden">Desliza la tabla hacia los lados para ver todas las columnas.</p>`;
+    updateScrollHint();
+}
+
+// El aviso solo aparece cuando la tabla es más ancha que su zona
+function updateScrollHint() {
+    const scroll = document.querySelector('#reportTable .report-scroll');
+    const hint = document.querySelector('#reportTable .report-scroll-hint');
+    if (scroll && hint) hint.classList.toggle('hidden', scroll.scrollWidth <= scroll.clientWidth + 1);
 }
 
 async function runReport(event) {
@@ -172,16 +246,29 @@ async function runReport(event) {
         const value = form.elements[filter.nombre]?.value;
         if (value !== undefined && value !== '') params.set(filter.nombre, value);
     });
-    $('#reportTable').innerHTML = '<div class="loading-state"><span class="spinner"></span><p>Generando reporte…</p></div>';
+    $('#reportSummary').innerHTML = '';
+    $('#reportTable').innerHTML = stateBlock({ mark: '<span class="spinner" aria-hidden="true"></span>', title: 'Generando reporte…' });
+    $('#exportExcel').disabled = true;
+    $('#exportPdf').disabled = true;
+    const request = ++state.request;
     try {
         const query = params.toString();
-        state.result = await apiRequest(`reportes/${state.current.clave}${query ? `?${query}` : ''}`);
+        const result = await apiRequest(`reportes/${state.current.clave}${query ? `?${query}` : ''}`);
+        if (request !== state.request) return; // llegó tarde: ya se pidió otro reporte
+        state.result = result;
         renderResult();
     } catch (error) {
+        if (request !== state.request) return;
         state.result = null;
-        $('#reportTable').innerHTML = `<div class="empty-state error-state"><span>!</span><h3>No se pudo generar el reporte</h3><p>${escapeHtml(error.message)}</p></div>`;
-        $('#exportExcel').disabled = true;
-        $('#exportPdf').disabled = true;
+        $('#reportSummary').innerHTML = '';
+        // El mensaje del backend se muestra tal cual: explica qué filtro corregir
+        $('#reportTable').innerHTML = stateBlock({
+            mark: '<span class="report-state-mark" aria-hidden="true">!</span>',
+            title: 'No se pudo generar el reporte',
+            kind: 'error',
+            role: 'alert',
+            extra: `<p class="report-error-detail">${escapeHtml(error.message)}</p><button class="button button-secondary" data-report-retry type="button">Reintentar</button>`,
+        });
     }
 }
 
@@ -271,16 +358,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     try { showUser(JSON.parse(sessionStorage.getItem(SESSION_PROFILE))); } catch { /* perfil dañado: se recarga abajo */ }
     $('#logoutButton').addEventListener('click', logout);
     $('#apiBase').value = API_BASE;
-    $('#menuToggle').addEventListener('click', (event) => {
-        const isExpanded = event.currentTarget.getAttribute('aria-expanded') === 'true';
-        $('#sidebar').classList.toggle('hidden');
-        event.currentTarget.setAttribute('aria-expanded', String(!isExpanded));
-    });
     $('#reportMenu').addEventListener('click', (event) => {
         const button = event.target.closest('[data-report]');
         if (button) selectReport(button.dataset.report);
     });
+    $('#reportMenu').addEventListener('change', (event) => {
+        if (event.target.id === 'reportPicker') selectReport(event.target.value);
+    });
+    $('#reportTable').addEventListener('click', (event) => {
+        if (event.target.closest('[data-report-retry]')) runReport();
+    });
     $('#reportForm').addEventListener('submit', runReport);
+    window.addEventListener('resize', updateScrollHint);
     $('#exportExcel').addEventListener('click', exportExcel);
     $('#exportPdf').addEventListener('click', exportPdf);
     try {
@@ -292,10 +381,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         $('#connectionStatus').className = 'status-dot connected';
         renderMenu();
         if (state.catalog.length) selectReport(state.catalog[0].clave);
-        else $('#reportMenu').innerHTML = '<div class="empty-state"><span>⌁</span><h3>Sin reportes</h3><p>Tu rol no tiene reportes asignados.</p></div>';
+        else $('#reportTable').innerHTML = stateBlock({ mark: '<span class="report-state-mark" aria-hidden="true">0</span>', title: 'Tu rol no tiene reportes asignados', message: 'Pide al administrador que revise los permisos de tu rol.' });
     } catch (error) {
         if (!sessionStorage.getItem(SESSION_TOKEN)) return; // 401: ya se redirigió al login
         $('#connectionStatus').className = 'status-dot disconnected';
-        $('#reportMenu').innerHTML = `<div class="empty-state error-state"><span>!</span><h3>Sin conexión</h3><p>${escapeHtml(error.message)}. Verifica que el backend esté encendido.</p></div>`;
+        $('#reportTable').innerHTML = stateBlock({
+            mark: '<span class="report-state-mark" aria-hidden="true">!</span>',
+            title: `No se pudo conectar con ${API_BASE}`,
+            kind: 'error',
+            role: 'alert',
+            extra: `<p class="report-error-detail">${escapeHtml(error.message)}</p><p>Verifica que el backend esté encendido y recarga la página.</p>`,
+        });
     }
 });
