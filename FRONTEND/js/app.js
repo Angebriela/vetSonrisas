@@ -1,149 +1,7 @@
-const API_DEFAULT = 'http://localhost:3000';
-
-// Listas cerradas: deben coincidir con los CHECK de la base y con common/catalogos.ts del backend
-const TIPOS_MEDICAMENTO = ['Antibiótico', 'Antiparasitario', 'Antiinflamatorio', 'Analgésico', 'Anestésico', 'Vacuna', 'Vitamina', 'Antiséptico', 'Otro'];
-const VIAS_ADMINISTRACION = ['Oral', 'Inyectable', 'Tópica', 'Oftálmica', 'Ótica', 'Inhalatoria'];
-const PRESENTACIONES = ['Tableta', 'Cápsula', 'Suspensión', 'Solución', 'Ampolla', 'Frasco', 'Pomada', 'Spray', 'Pipeta', 'Polvo'];
-
-const resources = {
-    clientes: {
-        endpoint: 'clientes', title: 'Clientes', description: 'Personas responsables de las mascotas.', idField: 'idCliente',
-        fields: [
-            { name: 'nit', label: 'NIT', type: 'text', defaultValue: 'CF', maxLength: 20 }, { name: 'nombreCliente', label: 'Nombre', type: 'text', required: true },
-            { name: 'apellidoCliente', label: 'Apellido', type: 'text', required: true }, { name: 'direccion', label: 'Dirección', type: 'text' },
-            { name: 'telefono', label: 'Teléfono', type: 'tel', required: true, maxLength: 10, inputMode: 'numeric', pattern: '[0-9]{1,10}', className: 'phone-input' }, { name: 'correo', label: 'Correo electrónico', type: 'email' },
-            { name: 'esInterno', label: 'Uso interno de la clínica', type: 'checkbox' },
-        ],
-    },
-    pacientes: {
-        endpoint: 'pacientes', title: 'Pacientes', description: 'Mascotas registradas y sus datos clínicos básicos.', idField: 'idPaciente',
-        fields: [
-            { name: 'idCliente', label: 'Dueño', type: 'select', relation: 'clientes', required: true }, { name: 'nombrePaciente', label: 'Nombre', type: 'text', required: true },
-            { name: 'especiePaciente', label: 'Especie', type: 'text', required: true }, { name: 'razaPaciente', label: 'Raza', type: 'text' },
-            { name: 'sexoPaciente', label: 'Sexo', type: 'select', options: [{ value: 'M', label: 'Macho' }, { value: 'H', label: 'Hembra' }] }, { name: 'colorPaciente', label: 'Color', type: 'text' }, { name: 'fechaNacimiento', label: 'Fecha de nacimiento', type: 'date' },
-            { name: 'tipoPelaje', label: 'Tipo de pelaje', type: 'text' },
-            { name: 'identificacionesParticulares', label: 'Identificaciones particulares', type: 'textarea' }, { name: 'finZootecnico', label: 'Fin zootécnico', type: 'text' },
-        ],
-    },
-    citas: {
-        endpoint: 'citas', title: 'Citas', description: 'Agenda de atención para los pacientes.', idField: 'idCita',
-        fields: [
-            { name: 'idPaciente', label: 'Paciente', type: 'select', relation: 'pacientes', required: true }, { name: 'idEmpleado', label: 'Veterinario', type: 'select', relation: 'empleados', required: true },
-            { name: 'asuntoCita', label: 'Asunto', type: 'text' },
-            { name: 'fechaCita', label: 'Fecha', type: 'date', required: true }, { name: 'horaInicio', label: 'Hora de inicio', type: 'time', required: true },
-            { name: 'horaFin', label: 'Hora de finalización', type: 'time', required: true }, { name: 'estadoCita', label: 'Estado', type: 'select', options: ['Pendiente', 'Confirmada', 'Atendida', 'Cancelada'] },
-        ],
-    },
-    consultas: {
-        endpoint: 'consultas', title: 'Consultas', description: 'Atenciones realizadas por el personal veterinario.', idField: 'idConsulta',
-        fields: [
-            { name: 'idCita', label: 'Cita relacionada', type: 'select', relation: 'citas' }, { name: 'idPaciente', label: 'Paciente (obligatorio si no hay cita)', type: 'select', relation: 'pacientes' },
-            { name: 'idEmpleado', label: 'Empleado', type: 'select', relation: 'empleados', required: true },
-            { name: 'motivoConsulta', label: 'Motivo de consulta', type: 'textarea', required: true }, { name: 'fechaConsulta', label: 'Fecha', type: 'date' }, { name: 'horaConsulta', label: 'Hora', type: 'time' },
-            { name: 'peso', label: 'Peso (kg)', type: 'number', step: '0.01' }, { name: 'temperatura', label: 'Temperatura (°C)', type: 'number', step: '0.1' },
-            { name: 'diagnostico', label: 'Diagnóstico', type: 'textarea' }, { name: 'tratamiento', label: 'Tratamiento', type: 'textarea' },
-        ],
-    },
-    anamnesis: {
-        endpoint: 'anamnesis', title: 'Anamnesis', description: 'Antecedentes y hábitos de cada paciente.', idField: 'noFicha',
-        fields: [
-            { name: 'idPaciente', label: 'Paciente', type: 'select', relation: 'pacientes', required: true }, { name: 'dieta', label: 'Dieta', type: 'textarea' },
-            { name: 'enfermedadesPrevias', label: 'Enfermedades previas', type: 'textarea' }, { name: 'cirugiasPrevias', label: 'Cirugías previas', type: 'textarea' },
-            { name: 'esterilizado', label: 'Esterilizado', type: 'checkbox' }, { name: 'noPartos', label: 'Número de partos', type: 'number', step: '1' },
-            { name: 'desparasitada', label: 'Desparasitada', type: 'checkbox' }, { name: 'viajesRecientes', label: 'Viajes recientes', type: 'checkbox' },
-            { name: 'viveConAnimales', label: 'Vive con otros animales', type: 'checkbox' }, { name: 'comportamiento', label: 'Comportamiento', type: 'textarea' },
-        ],
-    },
-    medicamentos: {
-        endpoint: 'medicamentos', title: 'Medicamentos', description: 'Catálogo de productos clínicos y de venta.', idField: 'idMedicamento',
-        fields: [
-            { name: 'nombreMed', label: 'Nombre', type: 'text', required: true }, { name: 'contenidoNeto', label: 'Contenido neto', type: 'text' },
-            { name: 'tipoMedicamento', label: 'Tipo', type: 'select', options: TIPOS_MEDICAMENTO }, { name: 'viaAdministracion', label: 'Vía de administración', type: 'select', options: VIAS_ADMINISTRACION },
-            { name: 'presentacion', label: 'Presentación', type: 'select', options: PRESENTACIONES }, { name: 'aptoParaVenta', label: 'Apto para venta', type: 'checkbox' }, { name: 'usoClinico', label: 'Uso clínico', type: 'checkbox', defaultValue: true },
-        ],
-    },
-    lotes: {
-        endpoint: 'lotes', title: 'Lotes', description: 'Existencias, costos y vencimientos del inventario.', idField: 'idLote',
-        fields: [
-            { name: 'idMedicamento', label: 'Medicamento', type: 'select', relation: 'medicamentos', required: true }, { name: 'codigoLote', label: 'Código de lote', type: 'text', required: true },
-            { name: 'fechaCaducidad', label: 'Fecha de caducidad', type: 'date', required: true }, { name: 'stockActual', label: 'Stock actual', type: 'number', step: '1', required: true },
-            { name: 'precioCosto', label: 'Precio de costo', type: 'number', step: '0.01', required: true }, { name: 'precioVenta', label: 'Precio de venta', type: 'number', step: '0.01', required: true },
-        ],
-    },
-    regvacunas: {
-        endpoint: 'regvacunas', title: 'Registros de vacunas', description: 'Libretas de vacunación por paciente.', idField: 'idRegVacunas',
-        fields: [{ name: 'idPaciente', label: 'Paciente', type: 'select', relation: 'pacientes', required: true }],
-    },
-    'vacunas-detalle': {
-        endpoint: 'vacunas-detalle', title: 'Detalle de vacunas', description: 'Aplicaciones y dosis administradas.', idField: 'idDetalleVacuna',
-        fields: [
-            { name: 'idRegVacunas', label: 'Registro de vacunas', type: 'select', relation: 'regvacunas', required: true }, { name: 'idLote', label: 'Lote', type: 'select', relation: 'lotes', required: true },
-            { name: 'idEmpleado', label: 'Aplicada por', type: 'select', relation: 'empleados', required: true }, { name: 'cantidad', label: 'Unidades usadas', type: 'number', step: '1', defaultValue: 1 },
-            { name: 'dosis', label: 'Dosis', type: 'text' }, { name: 'fechaAdministrada', label: 'Fecha administrada', type: 'date' }, { name: 'proximaDosis', label: 'Próxima dosis', type: 'date' }, { name: 'motivo', label: 'Motivo', type: 'textarea' },
-        ],
-    },
-    regcirugias: {
-        endpoint: 'regcirugias', title: 'Registros de cirugías', description: 'Historial quirúrgico por paciente.', idField: 'idRegCirugias',
-        fields: [{ name: 'idPaciente', label: 'Paciente', type: 'select', relation: 'pacientes', required: true }],
-    },
-    'cirugias-detalle': {
-        endpoint: 'cirugias-detalle', title: 'Detalle de cirugías', description: 'Procedimientos, motivos y lotes utilizados.', idField: 'idDetalleCirugia',
-        fields: [
-            { name: 'idRegCirugia', label: 'Registro de cirugía', type: 'select', relation: 'regcirugias', required: true }, { name: 'idLote', label: 'Lote', type: 'select', relation: 'lotes', required: true },
-            { name: 'idEmpleado', label: 'Cirujano', type: 'select', relation: 'empleados', required: true }, { name: 'cantidad', label: 'Unidades usadas', type: 'number', step: '1', defaultValue: 1 },
-            { name: 'tipoDeCirugia', label: 'Tipo de cirugía', type: 'text' }, { name: 'nombreCirugia', label: 'Nombre de cirugía', type: 'text' },
-            { name: 'fechaCirugia', label: 'Fecha de cirugía', type: 'date' }, { name: 'motivo', label: 'Motivo', type: 'textarea' },
-        ],
-    },
-    ventas: {
-        endpoint: 'ventas', title: 'Ventas', description: 'Facturación y ventas realizadas en la clínica.', idField: 'idVenta',
-        fields: [
-            // listOnly: se muestra en el listado pero no en el formulario (lo genera la base de datos)
-            { name: 'noFactura', label: 'No. de factura', type: 'text', listOnly: true }, { name: 'estado', label: 'Estado', type: 'text', listOnly: true },
-            { name: 'idCliente', label: 'Cliente', type: 'select', relation: 'clientes', required: true }, { name: 'idEmpleado', label: 'Empleado', type: 'select', relation: 'empleados', required: true },
-            { name: 'fechaVenta', label: 'Fecha', type: 'date' }, { name: 'horaVenta', label: 'Hora', type: 'time' },
-        ],
-    },
-    'venta-detalle': {
-        endpoint: 'venta-detalle', title: 'Detalle de ventas', description: 'Productos y cantidades incluidas en cada venta.', idField: 'idDetalleVenta', specialFilter: true,
-        fields: [
-            { name: 'idVenta', label: 'Venta', type: 'select', relation: 'ventas', required: true }, { name: 'idLote', label: 'Lote', type: 'select', relation: 'lotes', required: true },
-            { name: 'cantMedicamento', label: 'Cantidad', type: 'number', step: '1', required: true }, { name: 'precioVenta', label: 'Precio de venta', type: 'number', step: '0.01', required: true },
-        ],
-    },
-    empleados: {
-        endpoint: 'empleados', title: 'Empleados', description: 'Personal que opera la veterinaria.', idField: 'idEmpleado',
-        fields: [
-            { name: 'noIdentificacion', label: 'No. de identificación', type: 'text', required: true }, { name: 'nombreEmpleado', label: 'Nombre', type: 'text', required: true },
-            { name: 'apellidoEmpleado', label: 'Apellido', type: 'text', required: true }, { name: 'fechaNacimientoEmpleado', label: 'Fecha de nacimiento', type: 'date', required: true },
-            { name: 'idNacionalidad', label: 'Nacionalidad', type: 'select', relation: 'nacionalidades', required: true }, { name: 'idRol', label: 'Rol', type: 'select', relation: 'roles', required: true },
-        ],
-    },
-    roles: {
-        endpoint: 'roles', title: 'Roles', description: 'Perfiles y responsabilidades del personal.', idField: 'idRol',
-        fields: [{ name: 'nombreRol', label: 'Nombre del rol', type: 'text', required: true }, { name: 'detalleRol', label: 'Detalle', type: 'textarea' }],
-    },
-    nacionalidades: {
-        endpoint: 'nacionalidades', title: 'Nacionalidades', description: 'Catálogo de nacionalidades del personal.', idField: 'idNacionalidad',
-        fields: [{ name: 'pais', label: 'País', type: 'text', required: true }],
-    },
-    proveedores: {
-        endpoint: 'proveedores', title: 'Proveedores', description: 'Empresas a las que se les compra medicamento.', idField: 'idProveedor',
-        fields: [
-            { name: 'nombreProveedor', label: 'Nombre', type: 'text', required: true }, { name: 'nit', label: 'NIT', type: 'text', maxLength: 15 },
-            { name: 'telefono', label: 'Teléfono', type: 'tel', required: true, maxLength: 10, inputMode: 'numeric', pattern: '[0-9]{1,10}', className: 'phone-input' },
-            { name: 'correo', label: 'Correo electrónico', type: 'email' }, { name: 'direccion', label: 'Dirección', type: 'text' },
-        ],
-    },
-    compras: {
-        endpoint: 'compras', title: 'Compras', description: 'Ingreso de mercadería. Crea la compra y luego agrega sus lotes con el botón «＋ Lote».', idField: 'idCompra',
-        fields: [
-            { name: 'idProveedor', label: 'Proveedor', type: 'select', relation: 'proveedores', required: true }, { name: 'idEmpleado', label: 'Recibió', type: 'select', relation: 'empleados', required: true },
-            { name: 'fechaCompra', label: 'Fecha', type: 'date' }, { name: 'noFacturaProveedor', label: 'Factura del proveedor', type: 'text' },
-            { name: 'detalles', label: 'Lotes ingresados', type: 'text', listOnly: true, display: (row) => (row.detalles || []).map((detalle) => `${detalle.lote?.medicamento?.nombreMed || 'Lote'} ×${detalle.cantidad}`).join(', ') || 'Sin lotes' },
-        ],
-    },
-};
+import { API_DEFAULT, resources } from './config/resources.js';
+import { createApiClient } from './services/api.js';
+import { renderFormFields, readResourcePayload, readActionPayload } from './components/form-fields.js';
+import { renderDataTable } from './components/data-table.js';
 
 const state = {
     apiBase: localStorage.getItem('vet_api_base') || API_DEFAULT,
@@ -159,24 +17,7 @@ const state = {
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 
-function apiUrl(path) {
-    return `${state.apiBase.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
-}
-
-async function apiRequest(path, options = {}) {
-    const response = await fetch(apiUrl(path), {
-        ...options,
-        headers: { Accept: 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) },
-    });
-    const text = await response.text();
-    let body = null;
-    try { body = text ? JSON.parse(text) : null; } catch { body = text; }
-    if (!response.ok) {
-        const messages = Array.isArray(body?.message) ? body.message.join(', ') : body?.message || body || `Error HTTP ${response.status}`;
-        throw new Error(messages);
-    }
-    return body;
-}
+const apiRequest = createApiClient(() => state.apiBase);
 
 function showToast(message, type = 'success') {
     const toast = $('#toast');
@@ -305,25 +146,11 @@ async function loadRecords(path = null) {
 }
 
 function renderTable(resource, rows) {
-    const container = $('#tableContainer');
     if (resource.endpoint === 'citas') {
         renderCalendar(resource, rows);
         return;
     }
-    if (!rows.length) {
-        container.innerHTML = `<div class="empty-state"><span>⌁</span><h3>Aún no hay registros</h3><p>Agrega el primer registro de ${resource.title.toLowerCase()}.</p><button class="button" data-new="true" type="button">＋ Crear registro</button></div>`;
-        return;
-    }
-    const visibleFields = resource.fields.slice(0, 7);
-    const headers = [resource.idField, ...visibleFields.map((field) => field.label)];
-    const tableRows = rows.map((row) => {
-        const id = row[resource.idField];
-        let receiptAction = resource.endpoint === 'ventas' ? `<button class="icon-button receipt-icon" data-action="download-receipt" data-id="${escapeHtml(id)}" title="Descargar comprobante PDF">PDF</button>` : '';
-        if (resource.endpoint === 'ventas' && row.estado === 'Emitida') receiptAction += `<button class="icon-button text-action danger-icon" data-action="void-sale" data-id="${escapeHtml(id)}" title="Anular factura y devolver el stock">Anular</button>`;
-        if (resource.endpoint === 'compras') receiptAction += `<button class="icon-button text-action" data-action="add-lot" data-id="${escapeHtml(id)}" title="Agregar un lote a esta compra">＋ Lote</button>`;
-        return `<tr><td class="id-cell">#${escapeHtml(id)}</td>${visibleFields.map((field) => `<td>${escapeHtml(displayValue(row, field))}</td>`).join('')}<td class="actions-cell"><button class="icon-button" data-action="edit" data-id="${escapeHtml(id)}" title="Editar">✎</button>${receiptAction}<button class="icon-button danger-icon" data-action="delete" data-id="${escapeHtml(id)}" title="Eliminar">⌫</button></td></tr>`;
-    }).join('');
-    container.innerHTML = `<table><thead><tr>${headers.map((header) => `<th>${escapeHtml(header === resource.idField ? 'ID' : header)}</th>`).join('')}<th>Acciones</th></tr></thead><tbody>${tableRows}</tbody></table><div class="table-footer">${rows.length} registro${rows.length === 1 ? '' : 's'} encontrados</div>`;
+    $('#tableContainer').innerHTML = renderDataTable(resource, rows, { escapeHtml, displayValue });
 }
 
 function calendarDateKey(year, month, day) {
@@ -520,37 +347,9 @@ async function downloadSaleReceipt(id) {
 }
 
 function renderForm(resource, row = {}) {
-    $('#formFields').innerHTML = resource.fields.filter((field) => !field.listOnly).map((field) => {
-        const rawValue = rawFieldValue(row, field);
-        const value = rawValue === '' && field.defaultValue !== undefined ? field.defaultValue : rawValue;
-        const required = field.required ? 'required' : '';
-        const fieldId = `field-${field.name}`;
-        if (field.type === 'checkbox') return `<label class="checkbox-field"><input id="${fieldId}" name="${field.name}" type="checkbox" ${value === true || (value === '' && field.defaultValue) ? 'checked' : ''}><span>${field.label}</span></label>`;
-        if (field.type === 'select') {
-            const options = field.options
-                ? field.options.map((option) => {
-                    const optionValue = typeof option === 'string' ? option : option.value;
-                    const optionLabel = typeof option === 'string' ? option : option.label;
-                    return `<option value="${escapeHtml(optionValue)}" ${String(optionValue) === String(value) ? 'selected' : ''}>${escapeHtml(optionLabel)}</option>`;
-                }).join('')
-                : (state.relationCache[field.relation] || []).map((item) => {
-                    const id = item[resources[field.relation].idField];
-                    return `<option value="${escapeHtml(id)}" ${String(id) === String(value) ? 'selected' : ''}>${escapeHtml(relationLabel(item, field.relation))}</option>`;
-                }).join('');
-            return `<div class="form-field"><label for="${fieldId}">${field.label}${field.required ? ' *' : ''}</label><select id="${fieldId}" name="${field.name}" ${required}><option value="">Selecciona una opción</option>${options}</select></div>`;
-        }
-        const tag = field.type === 'textarea' ? 'textarea' : 'input';
-        const attributes = tag === 'textarea' ? '' : `type="${field.type}" ${field.step ? `step="${field.step}"` : ''}`;
-        if (tag === 'textarea') return `<div class="form-field wide-field"><label for="${fieldId}">${field.label}${field.required ? ' *' : ''}</label><textarea id="${fieldId}" name="${field.name}" ${required}>${escapeHtml(value)}</textarea></div>`;
-        const extraAttributes = [
-            field.maxLength ? `maxlength="${field.maxLength}"` : '',
-            field.inputMode ? `inputmode="${field.inputMode}"` : '',
-            field.pattern ? `pattern="${field.pattern}"` : '',
-            field.className ? `class="${field.className}"` : '',
-            field.readOnly ? 'readonly' : '',
-        ].filter(Boolean).join(' ');
-        return `<div class="form-field"><label for="${fieldId}">${field.label}${field.required ? ' *' : ''}</label><input id="${fieldId}" name="${field.name}" value="${escapeHtml(value)}" ${attributes} ${extraAttributes} ${required}></div>`;
-    }).join('');
+    $('#formFields').innerHTML = renderFormFields(resource, row, {
+        resources, relationCache: state.relationCache, relationLabel, rawFieldValue, escapeHtml,
+    });
 }
 
 function saleLotLabel(lote) {
@@ -834,24 +633,14 @@ async function submitForm(event) {
     if (state.customAction) {
         const { fields, handler } = state.customAction;
         try {
-            const message = await handler(formPayload(form, fields));
+            const message = await handler(readActionPayload(form, fields));
             closeModal();
             showToast(message);
             await loadRecords();
         } catch (error) { showToast(error.message, 'error'); }
         return;
     }
-    const payload = {};
-    resource.fields.forEach((field) => {
-        if (field.listOnly) return;
-        const input = form.elements[field.name];
-        if (!input) return;
-        if (field.type === 'checkbox') { payload[field.name] = input.checked; return; }
-        if (input.value === '') return;
-        if (field.type === 'number') payload[field.name] = Number(input.value);
-        else if (field.type === 'select' && field.relation) payload[field.name] = Number(input.value);
-        else payload[field.name] = input.value;
-    });
+    const payload = readResourcePayload(form, resource);
     const isEditing = Boolean(state.editingId);
     try {
         if (state.currentKey === 'ventas' && !isEditing) {
@@ -898,16 +687,6 @@ async function openActionModal({ eyebrow, title, submitLabel, fields, row = {}, 
     $('#formFields input, #formFields select, #formFields textarea')?.focus();
 }
 
-function formPayload(form, fields) {
-    const payload = {};
-    fields.forEach((field) => {
-        const input = form.elements[field.name];
-        if (!input || input.value === '') return;
-        if (field.type === 'number' || (field.type === 'select' && field.relation)) payload[field.name] = Number(input.value);
-        else payload[field.name] = input.value;
-    });
-    return payload;
-}
 
 function startConsultation(id) {
     const cita = state.currentRows.find((item) => String(item.idCita) === String(id)) || {};

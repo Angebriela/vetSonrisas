@@ -9,10 +9,21 @@
 </head>
 <body>
     <div class="dashboard-layout">
+        <aside id="sidebar" class="sidebar">
+            <div class="brand">
+                <img class="brand-logo" src="../pictures/logo.png" alt="Veterinaria Sonrisas">
+                <div class="brand-copy"><strong>Veterinaria Sonrisas</strong><span>Gestión clínica</span></div>
+            </div>
+            <nav class="nav-menu" aria-label="Navegación principal">
+                <p class="nav-label">Menú principal</p>
+                <a href="dashboard.html" class="nav-link"><span class="nav-icon">⌂</span><span>Panel principal</span></a>
+                <a href="reportes.html" class="nav-link active" aria-current="page"><span class="nav-icon">▤</span><span>Reportes</span></a>
+            </nav>
+        </aside>
         <main class="main-content">
             <header class="topbar">
                 <div class="topbar-left">
-                    <a href="dashboard.html" class="button button-secondary button-small">← Panel</a>
+                    <button id="menuToggle" class="menu-btn" type="button" aria-label="Mostrar u ocultar menú" aria-expanded="true">☰</button>
                     <div><p class="eyebrow">Veterinaria Sonrisas</p><h1>Reportes</h1></div>
                 </div>
                 <div class="connection-box">

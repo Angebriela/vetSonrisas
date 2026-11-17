@@ -247,6 +247,11 @@ function exportPdf() {
 
 document.addEventListener('DOMContentLoaded', async () => {
     $('#apiBase').value = API_BASE;
+    $('#menuToggle').addEventListener('click', (event) => {
+        const isExpanded = event.currentTarget.getAttribute('aria-expanded') === 'true';
+        $('#sidebar').classList.toggle('hidden');
+        event.currentTarget.setAttribute('aria-expanded', String(!isExpanded));
+    });
     $('#reportMenu').addEventListener('click', (event) => {
         const button = event.target.closest('[data-report]');
         if (button) selectReport(button.dataset.report);

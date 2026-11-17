@@ -222,4 +222,10 @@ tr:hover td { background: #fbfdfc; }
 .report-summary { color: var(--muted); font-size: .8rem; margin: 0 0 10px; }
 .report-table td.num, .report-table th.num { font-variant-numeric: tabular-nums; text-align: right; }
 .report-table tfoot td { border-top: 2px solid var(--line); font-weight: 800; }
+.report-menu { background: linear-gradient(180deg, #fff, #f8fbfa); }
+.report-item { line-height: 1.45; transition: background .18s, color .18s, transform .18s; }
+.report-item.active { background: linear-gradient(120deg, var(--navy), var(--navy-soft)); box-shadow: 0 5px 14px rgba(23,50,77,.14); }
+.report-filters .form-field { flex: 1 1 190px; }
+.report-summary { background: #f3f8f6; border-radius: 8px; padding: 10px 12px; }
+.report-table { border-radius: 10px; overflow: hidden; }
 @media (max-width: 900px) { .report-layout { grid-template-columns: 1fr; } .report-menu { max-height: none; } }
