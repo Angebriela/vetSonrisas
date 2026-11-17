@@ -1,5 +1,7 @@
-export function renderFormFields(resource, row = {}, { resources, relationCache, relationLabel, rawFieldValue, escapeHtml }) {
-    return resource.fields.filter((field) => !field.listOnly).map((field) => {
+// mode: 'create' o 'edit'. createOnly = solo al crear (p. ej. la contraseña); editOnly = solo al editar
+export function renderFormFields(resource, row = {}, { resources, relationCache, relationLabel, rawFieldValue, escapeHtml, mode = 'create' }) {
+    const isEditing = mode === 'edit';
+    return resource.fields.filter((field) => !field.listOnly && !(isEditing && field.createOnly) && !(!isEditing && field.editOnly)).map((field) => {
         const rawValue = rawFieldValue(row, field);
         const value = rawValue === '' && field.defaultValue !== undefined ? field.defaultValue : rawValue;
         const required = field.required ? 'required' : '';
@@ -23,6 +25,8 @@ export function renderFormFields(resource, row = {}, { resources, relationCache,
         if (tag === 'textarea') return `<div class="form-field wide-field"><label for="${fieldId}">${field.label}${field.required ? ' *' : ''}</label><textarea id="${fieldId}" name="${field.name}" ${required}>${escapeHtml(value)}</textarea></div>`;
         const extraAttributes = [
             field.maxLength ? `maxlength="${field.maxLength}"` : '',
+            field.minLength ? `minlength="${field.minLength}"` : '',
+            field.type === 'password' ? 'autocomplete="new-password"' : '',
             field.inputMode ? `inputmode="${field.inputMode}"` : '',
             field.pattern ? `pattern="${field.pattern}"` : '',
             field.className ? `class="${field.className}"` : '',

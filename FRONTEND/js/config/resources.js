@@ -143,4 +143,17 @@ export const resources = {
             { name: 'detalles', label: 'Lotes ingresados', type: 'text', listOnly: true, display: (row) => (row.detalles || []).map((detalle) => `${detalle.lote?.medicamento?.nombreMed || 'Lote'} ×${detalle.cantidad}`).join(', ') || 'Sin lotes' },
         ],
     },
+    // Solo visible para el Administrador (lo decide el backend en permisos.lectura).
+    // El rol no se elige aquí: se toma del empleado (usuario -> empleado -> rol).
+    usuarios: {
+        endpoint: 'usuarios', title: 'Usuarios', description: 'Cuentas de acceso al sistema. El rol es el del empleado: para cambiarlo, edita el empleado.', idField: 'idUsuario', deleteLabel: 'Desactivar',
+        fields: [
+            { name: 'idEmpleado', label: 'Empleado', type: 'select', relation: 'empleados', required: true, createOnly: true, display: (row) => (row.empleado ? `${row.empleado.nombreEmpleado} ${row.empleado.apellidoEmpleado}` : `Empleado #${row.idEmpleado}`) },
+            { name: 'rol', label: 'Rol', type: 'text', listOnly: true, display: (row) => row.empleado?.rol?.nombreRol || '—' },
+            { name: 'nombreUsuario', label: 'Nombre de usuario', type: 'text', required: true, maxLength: 50 },
+            { name: 'contrasena', label: 'Contraseña (mínimo 8 caracteres)', type: 'password', required: true, minLength: 8, createOnly: true },
+            { name: 'activo', label: 'Activo', type: 'checkbox', editOnly: true },
+            { name: 'ultimoAcceso', label: 'Último acceso', type: 'text', listOnly: true, display: (row) => (row.ultimoAcceso ? new Date(row.ultimoAcceso).toLocaleString('es-GT') : 'Nunca') },
+        ],
+    },
 };

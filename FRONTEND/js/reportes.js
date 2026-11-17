@@ -6,6 +6,10 @@
 // ---------------------------------------------------------------------------
 const API_BASE = (localStorage.getItem('vet_api_base') || 'http://localhost:3000').replace(/\/$/, '');
 
+// Misma sesión que el panel (login.js la guarda en sessionStorage)
+const SESSION_TOKEN = 'vet_token';
+const SESSION_PROFILE = 'vet_perfil';
+
 const state = { catalog: [], current: null, result: null, options: {} };
 
 const $ = (selector) => document.querySelector(selector);
@@ -22,11 +26,25 @@ function showToast(message, type = 'success') {
     showToast.timeout = window.setTimeout(() => { toast.className = 'toast'; }, 4200);
 }
 
+function logout() {
+    sessionStorage.removeItem(SESSION_TOKEN);
+    sessionStorage.removeItem(SESSION_PROFILE);
+    window.location.replace('login.html');
+}
+
+function showUser(perfil) {
+    if (!perfil?.usuario) return;
+    $('#userName').textContent = perfil.usuario.nombreCompleto;
+    $('#userRole').textContent = perfil.usuario.nombreRol;
+}
+
 async function apiRequest(path) {
-    const response = await fetch(`${API_BASE}/${path}`, { headers: { Accept: 'application/json' } });
+    const token = sessionStorage.getItem(SESSION_TOKEN);
+    const response = await fetch(`${API_BASE}/${path}`, { headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
     const text = await response.text();
     let body = null;
     try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+    if (response.status === 401) logout(); // sin sesión o token vencido
     if (!response.ok) {
         const message = Array.isArray(body?.message) ? body.message.join(', ') : body?.message || `Error HTTP ${response.status}`;
         throw new Error(message);
@@ -246,6 +264,12 @@ function exportPdf() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    if (!sessionStorage.getItem(SESSION_TOKEN)) {
+        window.location.replace('login.html');
+        return;
+    }
+    try { showUser(JSON.parse(sessionStorage.getItem(SESSION_PROFILE))); } catch { /* perfil dañado: se recarga abajo */ }
+    $('#logoutButton').addEventListener('click', logout);
     $('#apiBase').value = API_BASE;
     $('#menuToggle').addEventListener('click', (event) => {
         const isExpanded = event.currentTarget.getAttribute('aria-expanded') === 'true';
@@ -260,11 +284,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('#exportExcel').addEventListener('click', exportExcel);
     $('#exportPdf').addEventListener('click', exportPdf);
     try {
+        const perfil = await apiRequest('auth/perfil');
+        sessionStorage.setItem(SESSION_PROFILE, JSON.stringify(perfil));
+        showUser(perfil);
+        // El backend ya devuelve solo los reportes permitidos para el rol
         state.catalog = await apiRequest('reportes');
         $('#connectionStatus').className = 'status-dot connected';
         renderMenu();
         if (state.catalog.length) selectReport(state.catalog[0].clave);
+        else $('#reportMenu').innerHTML = '<div class="empty-state"><span>⌁</span><h3>Sin reportes</h3><p>Tu rol no tiene reportes asignados.</p></div>';
     } catch (error) {
+        if (!sessionStorage.getItem(SESSION_TOKEN)) return; // 401: ya se redirigió al login
         $('#connectionStatus').className = 'status-dot disconnected';
         $('#reportMenu').innerHTML = `<div class="empty-state error-state"><span>!</span><h3>Sin conexión</h3><p>${escapeHtml(error.message)}. Verifica que el backend esté encendido.</p></div>`;
     }

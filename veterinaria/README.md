@@ -2,6 +2,12 @@
 
 El archivo `databases/01_ddl.sql` recrea el esquema completo; no lo ejecutes sobre una base con datos que debas conservar. En instalaciones nuevas, `databases/02_triggers.sql` ya define las seis funciones con el esquema correcto.
 
+## Usuarios e inicio de sesión
+
+Ejecuta `databases/06_usuarios.sql` después de `04_datos_prueba.sql` (el `TRUNCATE ... CASCADE` de 04 también vacía la tabla `usuario`). Se puede ejecutar varias veces. Crea un usuario por empleado con la contraseña `Sonrisas2026!`; los empleados 1 a 8 tienen nombres de demostración: `veterinario`, `asistente`, `recepcion`, `cajero`, `inventario`, `admin`, `groomer` y `conserje` (este último no tiene acceso al sistema).
+
+El backend necesita `JWT_SECRET` y `JWT_EXPIRES_IN` en `.env` (ver `.env.example`). Los permisos de cada rol están en `src/auth/permisos.ts`.
+
 ## Desarrollo
 
 Instala dependencias con `npm ci` dentro de esta carpeta y luego inicia el servidor con `npm run start:dev`. Si VS Code muestra que faltan los tipos `node` o `vitest/globals` en otra copia del proyecto, instala las dependencias en esa copia o abre esta carpeta como proyecto.

@@ -229,3 +229,26 @@ tr:hover td { background: #fbfdfc; }
 .report-summary { background: #f3f8f6; border-radius: 8px; padding: 10px 12px; }
 .report-table { border-radius: 10px; overflow: hidden; }
 @media (max-width: 900px) { .report-layout { grid-template-columns: 1fr; } .report-menu { max-height: none; } }
+
+/* ---------- Sesión: usuario en la barra superior ---------- */
+.topbar-right { align-items: center; display: flex; flex-wrap: wrap; gap: 18px; justify-content: flex-end; }
+.user-box { align-items: center; border-left: 1px solid var(--line); display: flex; gap: 12px; padding-left: 18px; }
+.user-copy { text-align: right; }
+.user-copy strong, .user-copy span { display: block; }
+.user-copy strong { color: var(--navy); font-size: .8rem; }
+.user-copy span { color: var(--muted); font-size: .68rem; margin-top: 2px; }
+@media (max-width: 820px) { .topbar-right { justify-content: space-between; width: 100%; } .user-box { border-left: 0; padding-left: 0; } .user-copy { text-align: left; } }
+
+/* ---------- Página de inicio de sesión ---------- */
+.login-page { background: linear-gradient(140deg, var(--cream), var(--mint)); }
+.login-shell { align-items: center; display: flex; justify-content: center; min-height: 100vh; padding: 24px 16px; }
+.login-card { max-width: 410px; padding: 30px; width: 100%; }
+.login-brand { align-items: center; display: flex; gap: 16px; margin-bottom: 14px; }
+.login-brand .brand-logo { border: 1px solid var(--line); height: 72px; width: 72px; }
+.login-form { display: grid; gap: 15px; margin-top: 20px; }
+.login-submit { padding: 12px 14px; width: 100%; }
+.login-submit:disabled { cursor: wait; filter: grayscale(.4); transform: none; }
+.login-error { background: #fde9eb; border-radius: 7px; color: var(--danger); font-size: .78rem; font-weight: 700; margin: 0; padding: 10px 12px; }
+.login-server { border-top: 1px solid var(--line); color: var(--muted); font-size: .74rem; margin-top: 22px; padding-top: 14px; }
+.login-server summary { cursor: pointer; }
+.login-server .form-field { margin-top: 10px; }
