@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Inicio de sesión de Veterinaria Sonrisas">
+    <title>Iniciar sesión · Veterinaria Sonrisas</title>
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="login-page">
+    <main class="login-shell">
+        <section class="login-card content-card" aria-labelledby="loginTitle">
+            <div class="login-brand">
+                <img src="../pictures/logo.png" alt="Veterinaria Sonrisas" class="brand-logo">
+                <div><p class="eyebrow">Veterinaria Sonrisas</p><h1 id="loginTitle">Iniciar sesión</h1></div>
+            </div>
+            <p class="section-description">Ingresa con tu usuario del sistema. Verás los módulos que corresponden a tu rol.</p>
+
+            <form id="loginForm" class="login-form" novalidate>
+                <div class="form-field">
+                    <label for="nombreUsuario">Usuario *</label>
+                    <input id="nombreUsuario" name="nombreUsuario" type="text" autocomplete="username" maxlength="50" required autofocus>
+                </div>
+                <div class="form-field">
+                    <label for="contrasena">Contraseña *</label>
+                    <input id="contrasena" name="contrasena" type="password" autocomplete="current-password" required>
+                </div>
+                <p id="loginError" class="login-error hidden" role="alert"></p>
+                <button id="loginSubmit" class="button login-submit" type="submit">Ingresar</button>
+            </form>
+
+            <details class="login-server">
+                <summary>Servidor de la API</summary>
+                <div class="form-field">
+                    <label for="apiBase">URL</label>
+                    <input id="apiBase" type="url" placeholder="http://localhost:3000" spellcheck="false">
+                </div>
+            </details>
+        </section>
+    </main>
+    <script src="../js/login.js"></script>
+</body>
+</html>

@@ -38,8 +38,9 @@
                 <a href="#" class="nav-link" data-target="empleados"><span class="nav-icon">♙</span><span>Empleados</span></a>
                 <a href="#" class="nav-link" data-target="roles"><span class="nav-icon">⚙</span><span>Roles</span></a>
                 <a href="#" class="nav-link" data-target="nacionalidades"><span class="nav-icon">◎</span><span>Nacionalidades</span></a>
+                <a href="#" class="nav-link" data-target="usuarios"><span class="nav-icon">⚿</span><span>Usuarios</span></a>
                 <p class="nav-label">Análisis</p>
-                <a href="reportes.html" class="nav-link"><span class="nav-icon">▤</span><span>Reportes</span></a>
+                <a href="reportes.html" id="reportsLink" class="nav-link"><span class="nav-icon">▤</span><span>Reportes</span></a>
             </nav>
         </aside>
 
@@ -49,11 +50,17 @@
                     <button id="menuToggle" class="menu-btn" type="button" aria-label="Mostrar u ocultar menú">☰</button>
                     <div><p class="eyebrow">Panel principal</p><h1 id="topbarTitle">Resumen general</h1></div>
                 </div>
-                <div class="connection-box">
-                    <label for="apiBase">API</label>
-                    <input id="apiBase" type="url" placeholder="http://localhost:3000" spellcheck="false">
-                    <button id="saveApiBase" class="button button-small" type="button">Conectar</button>
-                    <span id="connectionStatus" class="status-dot" title="Estado de conexión"></span>
+                <div class="topbar-right">
+                    <div class="connection-box">
+                        <label for="apiBase">API</label>
+                        <input id="apiBase" type="url" placeholder="http://localhost:3000" spellcheck="false">
+                        <button id="saveApiBase" class="button button-small" type="button">Conectar</button>
+                        <span id="connectionStatus" class="status-dot" title="Estado de conexión"></span>
+                    </div>
+                    <div class="user-box">
+                        <div class="user-copy"><strong id="userName">—</strong><span id="userRole"></span></div>
+                        <button id="logoutButton" class="button button-secondary button-small" type="button">Cerrar sesión</button>
+                    </div>
                 </div>
             </header>
 

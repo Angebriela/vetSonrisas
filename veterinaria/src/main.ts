@@ -14,7 +14,8 @@ async function bootstrap() {
   app.enableCors({
     origin: true,
     methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Accept'],
+    // Authorization: el frontend envía el token como "Bearer <token>"
+    allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
   });
 
   app.useGlobalPipes(

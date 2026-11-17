@@ -25,6 +25,8 @@ import { VentaDetalleModule } from './venta-detalle/venta-detalle.module.js';
 import { ProveedorModule } from './proveedor/proveedor.module.js';
 import { CompraModule } from './compra/compra.module.js';
 import { ReportesModule } from './reportes/reportes.module.js';
+import { AuthModule } from './auth/auth.module.js';
+import { UsuarioModule } from './usuarios/usuarios.module.js';
 
 
 @Module({ 
@@ -68,6 +70,8 @@ import { ReportesModule } from './reportes/reportes.module.js';
     ProveedorModule,
     CompraModule,
     ReportesModule,
+    AuthModule,
+    UsuarioModule,
 
 
 

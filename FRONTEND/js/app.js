@@ -12,12 +12,57 @@ const state = {
     saleItems: [],
     customAction: null,
     calendarMonth: new Date(),
+    // Los permisos los decide el backend (auth/permisos.ts) y llegan con el perfil
+    permisos: { escritura: [], lectura: [], reportes: [] },
 };
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 
-const apiRequest = createApiClient(() => state.apiBase);
+// ---------------------------------------------------------------------------
+// Sesión: login.js guarda el token y el perfil en sessionStorage
+// ---------------------------------------------------------------------------
+const SESSION_TOKEN = 'vet_token';
+const SESSION_PROFILE = 'vet_perfil';
+
+function readStoredProfile() {
+    try { return JSON.parse(sessionStorage.getItem(SESSION_PROFILE)); } catch { return null; }
+}
+
+function logout() {
+    sessionStorage.removeItem(SESSION_TOKEN);
+    sessionStorage.removeItem(SESSION_PROFILE);
+    window.location.replace('login.html');
+}
+
+const apiRequest = createApiClient(() => state.apiBase, {
+    getToken: () => sessionStorage.getItem(SESSION_TOKEN),
+    onUnauthorized: logout, // sin sesión o token vencido: de vuelta al login
+});
+
+const canView = (key) => state.permisos.lectura.includes(key);
+const canWrite = (key) => state.permisos.escritura.includes(key);
+
+// Muestra el usuario y oculta lo que su rol no puede ver
+function applyProfile(perfil) {
+    state.permisos = perfil.permisos;
+    sessionStorage.setItem(SESSION_PROFILE, JSON.stringify(perfil));
+    $('#userName').textContent = perfil.usuario.nombreCompleto;
+    $('#userRole').textContent = perfil.usuario.nombreRol;
+    $$('.nav-link[data-target]').forEach((link) => {
+        if (link.dataset.target !== 'overview') link.classList.toggle('hidden', !canView(link.dataset.target));
+    });
+    $('#reportsLink').classList.toggle('hidden', state.permisos.reportes.length === 0);
+    // Oculta los títulos del menú que se quedaron sin enlaces visibles
+    $$('.nav-label').forEach((label) => {
+        let visible = false;
+        for (let next = label.nextElementSibling; next && !next.classList.contains('nav-label'); next = next.nextElementSibling) {
+            if (!next.classList.contains('hidden')) visible = true;
+        }
+        label.classList.toggle('hidden', !visible);
+    });
+    $$('.quick-action[data-target]').forEach((button) => button.classList.toggle('hidden', !canView(button.dataset.target)));
+}
 
 function showToast(message, type = 'success') {
     const toast = $('#toast');
@@ -93,12 +138,12 @@ function renderStats(values) {
     const definitions = [
         ['clientes', 'Clientes', '◉', 'blue'], ['pacientes', 'Pacientes', '♧', 'mint'], ['citas', 'Citas agendadas', '◷', 'yellow'],
         ['medicamentos', 'Medicamentos', '▥', 'violet'], ['ventas', 'Ventas', '＄', 'orange'], ['empleados', 'Empleados', '♙', 'pink'],
-    ];
+    ].filter(([key]) => canView(key));
     $('#statsGrid').innerHTML = definitions.map(([key, label, icon, color]) => `<button class="stat-card ${color}" data-target="${key}" type="button"><span class="stat-icon">${icon}</span><span><strong>${values[key] ?? '—'}</strong><small>${label}</small></span><em>Ver →</em></button>`).join('');
 }
 
 async function loadOverview() {
-    const keys = ['clientes', 'pacientes', 'citas', 'medicamentos', 'ventas', 'empleados'];
+    const keys = ['clientes', 'pacientes', 'citas', 'medicamentos', 'ventas', 'empleados'].filter(canView);
     const results = await Promise.all(keys.map(async (key) => {
         try { return [key, (await apiRequest(resources[key].endpoint)).length]; } catch { return [key, null]; }
     }));
@@ -109,6 +154,11 @@ async function loadOverview() {
 
 function setView(key) {
     const overview = key === 'overview';
+    if (!overview && !canView(key)) {
+        showToast('Tu rol no tiene acceso a ese módulo.', 'error');
+        setView('overview');
+        return;
+    }
     $('#overviewView').classList.toggle('hidden', !overview);
     $('#recordsView').classList.toggle('hidden', overview);
     $$('.nav-link').forEach((link) => link.classList.toggle('active', link.dataset.target === key));
@@ -124,6 +174,7 @@ function setView(key) {
     $('#sectionDescription').textContent = resource.description;
     $('#sectionEyebrow').textContent = `Gestión · ${resource.endpoint}`;
     $('#ventaFilter').classList.toggle('hidden', !resource.specialFilter);
+    $('#newRecord').classList.toggle('hidden', !canWrite(key));
     loadRecords();
 }
 
@@ -150,7 +201,7 @@ function renderTable(resource, rows) {
         renderCalendar(resource, rows);
         return;
     }
-    $('#tableContainer').innerHTML = renderDataTable(resource, rows, { escapeHtml, displayValue });
+    $('#tableContainer').innerHTML = renderDataTable(resource, rows, { escapeHtml, displayValue, canWrite: canWrite(resource.endpoint) });
 }
 
 function calendarDateKey(year, month, day) {
@@ -188,13 +239,14 @@ function renderCalendar(resource, rows) {
     }, {});
     Object.values(appointmentsByDate).forEach((appointments) => appointments.sort((a, b) => String(a.horaInicio || '').localeCompare(String(b.horaInicio || ''))));
 
+    const writable = canWrite('citas'); // iniciar consulta, cancelar, editar y borrar
     const dayCells = Array.from({ length: cells }, (_, index) => {
         const day = index - firstDay + 1;
         if (day < 1 || day > daysInMonth) return '<div class="calendar-day outside-day"></div>';
         const key = calendarDateKey(year, month, day);
         const appointments = appointmentsByDate[key] || [];
         const isToday = calendarDateKey(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()) === key;
-        const appointmentCards = appointments.map((appointment) => `<div class="calendar-appointment ${appointmentStatusClass(appointment.estadoCita)}"><div class="calendar-appointment-time">${escapeHtml(String(appointment.horaInicio || '').slice(0, 5))}</div><strong>${escapeHtml(appointmentPatient(appointment))}</strong><span>${escapeHtml(appointment.asuntoCita || 'Atención veterinaria')}</span><div class="calendar-appointment-actions">${['Pendiente', 'Confirmada'].includes(appointment.estadoCita) ? `<button class="calendar-action-button" data-action="start-consult" data-id="${escapeHtml(appointment.idCita)}" type="button" title="Iniciar consulta">▶</button><button class="calendar-action-button" data-action="cancel-appointment" data-id="${escapeHtml(appointment.idCita)}" type="button" title="Cancelar cita">✕</button>` : ''}<button class="calendar-action-button" data-action="edit" data-id="${escapeHtml(appointment.idCita)}" type="button" title="Editar cita">✎</button><button class="calendar-action-button" data-action="delete" data-id="${escapeHtml(appointment.idCita)}" type="button" title="Eliminar cita">⌫</button></div></div>`).join('');
+        const appointmentCards = appointments.map((appointment) => `<div class="calendar-appointment ${appointmentStatusClass(appointment.estadoCita)}"><div class="calendar-appointment-time">${escapeHtml(String(appointment.horaInicio || '').slice(0, 5))}</div><strong>${escapeHtml(appointmentPatient(appointment))}</strong><span>${escapeHtml(appointment.asuntoCita || 'Atención veterinaria')}</span>${writable ? `<div class="calendar-appointment-actions">${['Pendiente', 'Confirmada'].includes(appointment.estadoCita) ? `<button class="calendar-action-button" data-action="start-consult" data-id="${escapeHtml(appointment.idCita)}" type="button" title="Iniciar consulta">▶</button><button class="calendar-action-button" data-action="cancel-appointment" data-id="${escapeHtml(appointment.idCita)}" type="button" title="Cancelar cita">✕</button>` : ''}<button class="calendar-action-button" data-action="edit" data-id="${escapeHtml(appointment.idCita)}" type="button" title="Editar cita">✎</button><button class="calendar-action-button" data-action="delete" data-id="${escapeHtml(appointment.idCita)}" type="button" title="Eliminar cita">⌫</button></div>` : ''}</div>`).join('');
         return `<div class="calendar-day${isToday ? ' today' : ''}"><div class="calendar-day-number">${day}</div><div class="calendar-appointments">${appointmentCards || '<span class="calendar-empty">Disponible</span>'}</div></div>`;
     }).join('');
 
@@ -346,9 +398,9 @@ async function downloadSaleReceipt(id) {
     } catch (error) { showToast(`No se pudo generar el comprobante: ${error.message}`, 'error'); }
 }
 
-function renderForm(resource, row = {}) {
+function renderForm(resource, row = {}, mode = 'create') {
     $('#formFields').innerHTML = renderFormFields(resource, row, {
-        resources, relationCache: state.relationCache, relationLabel, rawFieldValue, escapeHtml,
+        resources, relationCache: state.relationCache, relationLabel, rawFieldValue, escapeHtml, mode,
     });
 }
 
@@ -423,6 +475,7 @@ async function prepareSaleWorkflow(mode) {
     if (!isNewSale) return;
     if (!state.relationCache.lotes) state.relationCache.lotes = await apiRequest(resources.lotes.endpoint);
     state.saleItems = [];
+    $('#toggleClientForm').classList.toggle('hidden', !canWrite('clientes'));
     setQuickClientVisibility(false);
     renderSaleItems();
 }
@@ -580,6 +633,10 @@ async function prepareAppointmentWorkflow(mode) {
     workflow.classList.toggle('hidden', !isNewAppointment);
     if (!isNewAppointment) return;
     if (!state.relationCache.clientes) state.relationCache.clientes = await apiRequest(resources.clientes.endpoint);
+    // Crear cliente o paciente desde la cita solo si el rol escribe en esos módulos
+    $('#toggleAppointmentClientForm').closest('.sale-panel').classList.toggle('hidden', !canWrite('clientes'));
+    $('#toggleAppointmentPatientForm').closest('.sale-panel').classList.toggle('hidden', !canWrite('pacientes'));
+    workflow.classList.toggle('hidden', !canWrite('clientes') && !canWrite('pacientes'));
     setAppointmentClientVisibility(false);
     setAppointmentPatientVisibility(false);
 }
@@ -598,7 +655,7 @@ async function openModal(mode = 'create', id = null) {
     $('#modalEyebrow').textContent = `${resource.title} · ${mode === 'edit' ? `#${id}` : 'Nuevo'}`;
     $('#modalTitle').textContent = mode === 'edit' ? 'Editar registro' : `Nuevo registro de ${resource.title.toLowerCase()}`;
     $('#submitEntity').textContent = mode === 'edit' ? 'Guardar cambios' : (state.currentKey === 'ventas' ? 'Generar venta' : 'Guardar registro');
-    renderForm(resource, row);
+    renderForm(resource, row, mode);
     try {
         await prepareSaleWorkflow(mode);
         await prepareAppointmentWorkflow(mode);
@@ -745,13 +802,29 @@ function addLotToPurchase(id) {
     });
 }
 
+function changePassword(id) {
+    const usuario = state.currentRows.find((item) => String(item.idUsuario) === String(id)) || {};
+    openActionModal({
+        eyebrow: `Usuario ${usuario.nombreUsuario || `#${id}`}`, title: 'Cambiar contraseña', submitLabel: 'Guardar contraseña',
+        fields: [{ name: 'contrasena', label: 'Nueva contraseña (mínimo 8 caracteres)', type: 'password', required: true, minLength: 8 }],
+        handler: async (payload) => {
+            await apiRequest(`usuarios/${id}/contrasena`, { method: 'POST', body: JSON.stringify(payload) });
+            return 'Contraseña actualizada correctamente.';
+        },
+    });
+}
+
 async function deleteRecord(id) {
     const resource = resources[state.currentKey];
     const row = state.currentRows.find((item) => String(item[resource.idField]) === String(id));
-    if (!window.confirm(`¿Eliminar ${resource.title.toLowerCase().slice(0, -1)}${row ? ` #${id}` : ''}? Esta acción no se puede deshacer.`)) return;
+    // deleteLabel: módulos donde "borrar" no elimina, por ejemplo usuarios (se desactiva)
+    const question = resource.deleteLabel
+        ? `¿${resource.deleteLabel} ${resource.title.toLowerCase().slice(0, -1)}${row ? ` #${id}` : ''}?`
+        : `¿Eliminar ${resource.title.toLowerCase().slice(0, -1)}${row ? ` #${id}` : ''}? Esta acción no se puede deshacer.`;
+    if (!window.confirm(question)) return;
     try {
-        await apiRequest(`${resource.endpoint}/${id}`, { method: 'DELETE' });
-        showToast('Registro eliminado correctamente.');
+        const result = await apiRequest(`${resource.endpoint}/${id}`, { method: 'DELETE' });
+        showToast(resource.deleteLabel && result?.mensaje ? result.mensaje : 'Registro eliminado correctamente.');
         await loadRecords();
     } catch (error) { showToast(error.message, 'error'); }
 }
@@ -779,8 +852,17 @@ function saveApiBase() {
     if (state.currentKey) loadRecords(); else loadOverview();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    if (!sessionStorage.getItem(SESSION_TOKEN)) {
+        window.location.replace('login.html');
+        return;
+    }
+    // Se aplica el perfil guardado de inmediato (sin parpadeo del menú) y luego se refresca
+    const storedProfile = readStoredProfile();
+    if (storedProfile) applyProfile(storedProfile);
+
     $('#apiBase').value = state.apiBase;
+    $('#logoutButton').addEventListener('click', logout);
     $('#menuToggle').addEventListener('click', () => $('#sidebar').classList.toggle('hidden'));
     $('#saveApiBase').addEventListener('click', saveApiBase);
     $('#checkApi').addEventListener('click', checkApi);
@@ -864,10 +946,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (action && action.dataset.action === 'cancel-appointment') cancelAppointment(action.dataset.id);
         if (action && action.dataset.action === 'void-sale') voidSale(action.dataset.id);
         if (action && action.dataset.action === 'add-lot') addLotToPurchase(action.dataset.id);
+        if (action && action.dataset.action === 'change-password') changePassword(action.dataset.id);
         if (event.target.closest('[data-new]')) openModal();
         if (event.target.closest('[data-retry]')) loadRecords();
     });
 
+    try {
+        applyProfile(await apiRequest('auth/perfil'));
+    } catch (error) {
+        if (!sessionStorage.getItem(SESSION_TOKEN)) return; // 401: ya se redirigió al login
+        if (!storedProfile) showToast(`No se pudo cargar tu perfil: ${error.message}`, 'error');
+    }
     checkApi();
     loadOverview();
 });

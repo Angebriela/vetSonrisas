@@ -26,10 +26,16 @@
                     <button id="menuToggle" class="menu-btn" type="button" aria-label="Mostrar u ocultar menú" aria-expanded="true">☰</button>
                     <div><p class="eyebrow">Veterinaria Sonrisas</p><h1>Reportes</h1></div>
                 </div>
-                <div class="connection-box">
-                    <label>API</label>
-                    <input id="apiBase" type="url" readonly>
-                    <span id="connectionStatus" class="status-dot" title="Estado de conexión"></span>
+                <div class="topbar-right">
+                    <div class="connection-box">
+                        <label>API</label>
+                        <input id="apiBase" type="url" readonly>
+                        <span id="connectionStatus" class="status-dot" title="Estado de conexión"></span>
+                    </div>
+                    <div class="user-box">
+                        <div class="user-copy"><strong id="userName">—</strong><span id="userRole"></span></div>
+                        <button id="logoutButton" class="button button-secondary button-small" type="button">Cerrar sesión</button>
+                    </div>
                 </div>
             </header>
 
