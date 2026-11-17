@@ -278,74 +278,83 @@ function fileName(extension) {
     return `${state.result.clave}_${stamp}.${extension}`;
 }
 
-function filtersText() {
-    return state.result.filtros.length ? state.result.filtros.map((filter) => `${filter.etiqueta}: ${filter.valor}`).join('   ') : 'Sin filtros';
-}
-
 function generatedText() {
     return `Generado el ${new Date(state.result.generado).toLocaleString('es-GT')}`;
 }
 
-// ---- Excel: los números viajan como números, para poder sumar y filtrar en la hoja
-function exportExcel() {
-    const result = state.result;
-    if (!result?.filas.length) return;
-    const totals = totalsRow(result);
-    const header = [['Veterinaria Sonrisas'], [result.titulo], [filtersText()], [generatedText()], []];
-    const rows = result.filas.map((row) => result.columnas.map((column) => row[column] ?? ''));
-    const data = [...header, result.columnas, ...rows];
-    if (totals) data.push(result.columnas.map((column, index) => (totals[column] !== undefined ? Math.round(totals[column] * 100) / 100 : (index === 0 ? 'Total' : ''))));
-    const sheet = XLSX.utils.aoa_to_sheet(data);
-    sheet['!cols'] = result.columnas.map((column) => ({
-        wch: Math.min(48, Math.max(column.length, ...result.filas.map((row) => String(row[column] ?? '').length)) + 2),
-    }));
-    sheet['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: header.length, c: 0 }, e: { r: header.length + rows.length, c: result.columnas.length - 1 } }) };
-    const book = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(book, sheet, 'Reporte');
-    XLSX.writeFile(book, fileName('xlsx'));
-    showToast('Reporte exportado a Excel.');
+// ---- Exportaciones. Usan state.result.filas: TODAS las filas del reporte (la pantalla
+// también dibuja todas; no hay una variable de "página actual"). Los totales salen de
+// totalsRow() sobre esas mismas filas. El estilo (logo, colores, membrete, pie) vive en
+// marca.js; aquí solo se arman los datos.
+
+// Líneas bajo el membrete: filtros legibles, fecha de generación, usuario y filas
+function exportInfoLines(result) {
+    const filtros = result.filtros.length
+        ? result.filtros.map((filter) => `${filter.etiqueta}: ${filterValueText(filter.etiqueta, filter.valor)}`).join('    ')
+        : 'ninguno';
+    let usuario = '';
+    try {
+        const perfil = JSON.parse(sessionStorage.getItem(SESSION_PROFILE));
+        if (perfil?.usuario) usuario = ` por ${perfil.usuario.nombreCompleto} (${perfil.usuario.nombreRol})`;
+    } catch { /* sin perfil en la sesión: se omite el usuario */ }
+    return [
+        `Filtros: ${filtros}`,
+        `${generatedText()}${usuario}`,
+        `${result.filas.length.toLocaleString('es-GT')} ${result.filas.length === 1 ? 'fila' : 'filas'}`,
+    ];
 }
 
-// ---- PDF: encabezado, filtros, tabla con totales y número de página
+// ---- Excel (ExcelJS): los números viajan como números y los totales son fórmulas =SUM
+async function exportExcel() {
+    const result = state.result;
+    if (!result?.filas.length) return;
+    try {
+        const totals = totalsRow(result);
+        const libro = marcaExcel.nuevoLibro();
+        marcaExcel.crearHoja(libro, 'Reporte', {
+            titulo: result.titulo,
+            lineasInfo: exportInfoLines(result),
+            columnas: result.columnas,
+            filas: result.filas,
+            totales: totals ? Object.keys(totals) : [],
+        });
+        await marcaExcel.descargar(libro, fileName('xlsx'));
+        showToast('Reporte exportado a Excel.');
+    } catch (error) {
+        showToast(`No se pudo exportar a Excel: ${error.message}`, 'error');
+    }
+}
+
+// ---- PDF: membrete, filtros, tabla con encabezado repetido, totales al final y pie
 function exportPdf() {
     const result = state.result;
     if (!result?.filas.length) return;
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: result.columnas.length > 5 ? 'landscape' : 'portrait', unit: 'pt', format: 'letter' });
+    const doc = new jsPDF({ orientation: result.columnas.length > 5 ? 'landscape' : 'portrait', unit: 'pt', format: 'letter', compress: true });
     const totals = totalsRow(result);
-    const numeric = result.columnas.map((column) => result.filas.some((row) => isNumber(row[column])));
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(15);
-    doc.setTextColor(23, 50, 77);
-    doc.text('Veterinaria Sonrisas', 40, 42);
-    doc.setFontSize(12);
-    doc.text(result.titulo, 40, 60);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(90, 105, 115);
-    doc.text(filtersText(), 40, 75);
-    doc.text(`${generatedText()}   ·   ${result.filas.length} filas`, 40, 88);
+    const numeric = result.columnas.map((column, index) => (result.filas.some((row) => isNumber(row[column])) ? index : -1)).filter((index) => index >= 0);
+    const startY = marcaPdf.encabezado(doc, {
+        titulo: result.titulo,
+        subtitulo: state.current?.grupo ? `Reportes de ${state.current.grupo}` : '',
+        lineasInfo: exportInfoLines(result),
+    });
 
     doc.autoTable({
-        startY: 100,
+        ...marcaPdf.estiloTabla,
+        startY,
         head: [result.columnas],
         body: result.filas.map((row) => result.columnas.map((column) => formatCell(row[column], column))),
         foot: totals ? [result.columnas.map((column, index) => (totals[column] !== undefined ? formatCell(totals[column], column) : (index === 0 ? 'Total' : '')))] : undefined,
-        showFoot: 'lastPage',
-        styles: { font: 'helvetica', fontSize: 8, cellPadding: 4, overflow: 'linebreak' },
-        headStyles: { fillColor: [23, 50, 77], textColor: 255, fontStyle: 'bold' },
-        footStyles: { fillColor: [228, 242, 229], textColor: [23, 50, 77], fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: [247, 250, 249] },
-        columnStyles: Object.fromEntries(numeric.map((value, index) => [index, value ? { halign: 'right' } : {}])),
-        margin: { left: 40, right: 40 },
-        didDrawPage: () => {
-            const page = doc.internal.pageSize;
-            doc.setFontSize(8);
-            doc.setTextColor(120, 144, 156);
-            doc.text(`Página ${doc.internal.getNumberOfPages()}`, page.getWidth() - 40, page.getHeight() - 20, { align: 'right' });
+        columnStyles: marcaPdf.alinearDerecha(numeric),
+        didParseCell: (data) => {
+            // Encabezados y totales de columnas numéricas también a la derecha
+            if (data.section !== 'body' && numeric.includes(data.column.index)) data.cell.styles.halign = 'right';
+        },
+        didDrawPage: (data) => {
+            if (data.pageNumber > 1) marcaPdf.encabezadoContinuacion(doc, result.titulo);
         },
     });
+    marcaPdf.pie(doc);
     doc.save(fileName('pdf'));
     showToast('Reporte exportado a PDF.');
 }
