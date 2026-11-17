@@ -1,7 +1,18 @@
 import { API_DEFAULT, resources } from './config/resources.js';
 import { createApiClient } from './services/api.js';
 import { renderFormFields, readResourcePayload, readActionPayload } from './components/form-fields.js';
-import { renderDataTable } from './components/data-table.js';
+import { renderDataTable, pageCount, PAGE_SIZES } from './components/data-table.js';
+
+// Filas por página: se recuerda la última elección del usuario en este navegador
+function storedPageSize() {
+    try {
+        const size = Number(localStorage.getItem('vet_page_size'));
+        return PAGE_SIZES.includes(size) ? size : PAGE_SIZES[0];
+    } catch { return PAGE_SIZES[0]; }
+}
+
+// En teléfono (y tablet vertical) la barra lateral es un panel que se abre con ☰
+const mobileLayout = window.matchMedia('(max-width: 820px)');
 
 const state = {
     apiBase: localStorage.getItem('vet_api_base') || API_DEFAULT,
@@ -12,6 +23,8 @@ const state = {
     saleItems: [],
     customAction: null,
     calendarMonth: new Date(),
+    page: 1,
+    pageSize: storedPageSize(),
     // Los permisos los decide el backend (auth/permisos.ts) y llegan con el perfil
     permisos: { escritura: [], lectura: [], reportes: [] },
 };
@@ -169,6 +182,7 @@ function setView(key) {
     }
     const resource = resources[key];
     state.currentKey = key;
+    state.page = 1; // cada módulo empieza en su primera página
     $('#topbarTitle').textContent = resource.title;
     $('#cardTitle').textContent = resource.title;
     $('#sectionDescription').textContent = resource.description;
@@ -201,7 +215,26 @@ function renderTable(resource, rows) {
         renderCalendar(resource, rows);
         return;
     }
-    $('#tableContainer').innerHTML = renderDataTable(resource, rows, { escapeHtml, displayValue, canWrite: canWrite(resource.endpoint) });
+    // Tras borrar o filtrar puede haber menos páginas: se ajusta a la última que exista
+    state.page = Math.min(state.page, pageCount(rows.length, state.pageSize));
+    $('#tableContainer').innerHTML = renderDataTable(resource, rows, {
+        escapeHtml, displayValue, canWrite: canWrite(resource.endpoint), page: state.page, pageSize: state.pageSize,
+    });
+}
+
+// Cambia de página sin volver a pedir los datos y deja el foco en el mismo control
+function goToPage(page, nav) {
+    state.page = page;
+    renderTable(resources[state.currentKey], state.currentRows);
+    const next = $(`[data-page-nav="${nav}"]:not(:disabled)`) || $('.page-button[aria-current="page"]');
+    next?.focus();
+    // Si el inicio de la tabla quedó arriba de la pantalla, se vuelve a mostrar
+    const card = $('#recordsView .records-card');
+    if (card && card.getBoundingClientRect().top < 0) card.scrollIntoView({ block: 'start' });
+}
+
+function closeSidebarOnMobile() {
+    if (mobileLayout.matches) $('#sidebar').classList.add('hidden');
 }
 
 function calendarDateKey(year, month, day) {
@@ -864,11 +897,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('#apiBase').value = state.apiBase;
     $('#logoutButton').addEventListener('click', logout);
     $('#menuToggle').addEventListener('click', () => $('#sidebar').classList.toggle('hidden'));
+    // En teléfono el menú arranca cerrado para que el contenido use todo el ancho
+    closeSidebarOnMobile();
+    mobileLayout.addEventListener('change', (event) => $('#sidebar').classList.toggle('hidden', event.matches));
+    $('#tableContainer').addEventListener('change', (event) => {
+        if (event.target.id !== 'pageSize') return;
+        state.pageSize = Number(event.target.value);
+        try { localStorage.setItem('vet_page_size', String(state.pageSize)); } catch { /* sin almacenamiento: solo dura esta visita */ }
+        goToPage(1, 'size');
+        $('#pageSize')?.focus();
+    });
     $('#saveApiBase').addEventListener('click', saveApiBase);
     $('#checkApi').addEventListener('click', checkApi);
     $('#refreshRecords').addEventListener('click', () => loadRecords());
     $('#newRecord').addEventListener('click', () => openModal());
     $('#filterVentaDetails').addEventListener('click', () => {
+        state.page = 1;
         const id = $('#ventaFilterId').value.trim();
         if (!id) return loadRecords();
         loadRecords(`${resources['venta-detalle'].endpoint}/venta/${id}`);
@@ -936,8 +980,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderCalendar(resources.citas, state.currentRows);
             return;
         }
+        const pageButton = event.target.closest('[data-page]');
+        if (pageButton && !pageButton.disabled) {
+            goToPage(Number(pageButton.dataset.page), pageButton.dataset.pageNav);
+            return;
+        }
         const navTarget = event.target.closest('[data-target]');
-        if (navTarget) { event.preventDefault(); setView(navTarget.dataset.target); }
+        if (navTarget) {
+            event.preventDefault();
+            setView(navTarget.dataset.target);
+            closeSidebarOnMobile();
+        }
+        // En teléfono, tocar fuera del menú abierto lo cierra
+        if (mobileLayout.matches && !event.target.closest('#sidebar, #menuToggle')) closeSidebarOnMobile();
         const action = event.target.closest('[data-action]');
         if (action && action.dataset.action === 'edit') openModal('edit', action.dataset.id);
         if (action && action.dataset.action === 'delete') deleteRecord(action.dataset.id);
