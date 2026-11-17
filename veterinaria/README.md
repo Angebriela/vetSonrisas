@@ -1,3 +1,11 @@
+## Base de datos existente
+
+El archivo `databases/01_ddl.sql` recrea el esquema completo; no lo ejecutes sobre una base con datos que debas conservar. En instalaciones nuevas, `databases/02_triggers.sql` ya define las seis funciones con el esquema correcto.
+
+## Desarrollo
+
+Instala dependencias con `npm ci` dentro de esta carpeta y luego inicia el servidor con `npm run start:dev`. Si VS Code muestra que faltan los tipos `node` o `vitest/globals` en otra copia del proyecto, instala las dependencias en esa copia o abre esta carpeta como proyecto.
+
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>

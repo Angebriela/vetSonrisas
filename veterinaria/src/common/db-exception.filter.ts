@@ -1,4 +1,4 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus } from '@nestjs/common';
+import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus, Logger } from '@nestjs/common';
 import type { Response } from 'express';
 import { QueryFailedError } from 'typeorm';
 
@@ -9,9 +9,15 @@ import { QueryFailedError } from 'typeorm';
  */
 @Catch(QueryFailedError)
 export class DbExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(DbExceptionFilter.name);
+
   catch(error: QueryFailedError, host: ArgumentsHost) {
     const response = host.switchToHttp().getResponse<Response>();
     const driver = (error as any).driverError ?? {};
+    this.logger.error(
+      `PostgreSQL error ${driver.code ?? 'unknown'}: ${driver.message ?? error.message}`,
+      [driver.detail, driver.constraint, driver.table].filter(Boolean).join(' | ') || undefined,
+    );
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Error interno de base de datos';
 

@@ -57,7 +57,8 @@ BEGIN
 
     RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = veterinariasonrisas, pg_temp;
 
 CREATE TRIGGER trg_stock_venta
 AFTER INSERT OR UPDATE OR DELETE ON venta_detalle
@@ -99,7 +100,8 @@ BEGIN
 
     RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = veterinariasonrisas, pg_temp;
 
 CREATE TRIGGER trg_stock_vacuna
 AFTER INSERT OR UPDATE OR DELETE ON vacunas_detalle
@@ -129,7 +131,8 @@ BEGIN
 
     RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = veterinariasonrisas, pg_temp;
 
 CREATE TRIGGER trg_stock_compra
 AFTER INSERT OR UPDATE OR DELETE ON compra_detalle
@@ -161,7 +164,8 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = veterinariasonrisas, pg_temp;
 
 CREATE TRIGGER trg_cita_sin_traslape
 BEFORE INSERT OR UPDATE ON cita
@@ -187,7 +191,8 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = veterinariasonrisas, pg_temp;
 
 CREATE TRIGGER trg_consulta_paciente
 BEFORE INSERT OR UPDATE ON consulta
@@ -206,7 +211,8 @@ BEGIN
             v_ant, v_nue);
     RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = veterinariasonrisas, pg_temp;
 
 CREATE TRIGGER trg_bitacora_venta
 AFTER INSERT OR UPDATE OR DELETE ON venta
