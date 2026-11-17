@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsEmail,
   IsNotEmpty,
   IsOptional,
@@ -38,5 +39,9 @@ export class CreateClienteDto {
   @IsOptional()
   @IsEmail({}, { message: 'El correo debe tener un formato válido' })
   correo?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  esInterno?: boolean;
 
 }

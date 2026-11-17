@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Reportes de Veterinaria Sonrisas">
+    <title>Reportes · Veterinaria Sonrisas</title>
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+    <div class="dashboard-layout">
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <a href="dashboard.html" class="button button-secondary button-small">← Panel</a>
+                    <div><p class="eyebrow">Veterinaria Sonrisas</p><h1>Reportes</h1></div>
+                </div>
+                <div class="connection-box">
+                    <label>API</label>
+                    <input id="apiBase" type="url" readonly>
+                    <span id="connectionStatus" class="status-dot" title="Estado de conexión"></span>
+                </div>
+            </header>
+
+            <section class="content-area">
+                <div class="report-layout">
+                    <aside id="reportMenu" class="content-card report-menu" aria-label="Lista de reportes"></aside>
+
+                    <div class="content-card">
+                        <p class="eyebrow" id="reportGroup">Reportes</p>
+                        <h2 id="reportTitle">Elige un reporte</h2>
+                        <p id="reportDescription" class="section-description">Selecciona un reporte de la lista, ajusta los filtros y pulsa «Generar».</p>
+
+                        <form id="reportForm" class="hidden" novalidate>
+                            <div id="reportFilters" class="report-filters"></div>
+                            <div class="report-actions">
+                                <button class="button" type="submit">Generar</button>
+                                <button id="exportExcel" class="button button-secondary" type="button" disabled>⭳ Excel</button>
+                                <button id="exportPdf" class="button button-secondary" type="button" disabled>⭳ PDF</button>
+                            </div>
+                        </form>
+
+                        <p id="reportSummary" class="report-summary"></p>
+                        <div id="reportTable" class="table-wrap" aria-live="polite"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <!-- Librerías incluidas en el proyecto (funcionan sin internet) -->
+    <script src="../vendor/xlsx.full.min.js"></script>
+    <script src="../vendor/jspdf.umd.min.js"></script>
+    <script src="../vendor/jspdf.plugin.autotable.min.js"></script>
+    <script src="../js/reportes.js"></script>
+</body>
+</html>

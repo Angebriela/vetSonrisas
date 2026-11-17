@@ -59,6 +59,15 @@ export class Lote {
   })
   precioCosto: number;
 
+  @Column({
+    name: 'precioventa',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: false,
+  })
+  precioVenta: number;
+
   @ManyToOne(() => Medicamento, (medicamento) => medicamento.lotes, {
     nullable: false,
   })

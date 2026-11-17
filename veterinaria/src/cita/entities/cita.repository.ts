@@ -14,11 +14,11 @@ export class CitaRepository {
   ) {}
 
   findAll() {
-    return this.repository.find({ relations: { paciente: true, consultas: true } });
+    return this.repository.find({ relations: { paciente: true, empleado: true, consultas: true } });
   }
 
   findById(id: number) {
-    return this.repository.findOne({ where: { idCita: id }, relations: { paciente: true, consultas: true } });
+    return this.repository.findOne({ where: { idCita: id }, relations: { paciente: true, empleado: true, consultas: true } });
   }
 
   create(dto: CreateCitaDto) {

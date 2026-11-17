@@ -23,8 +23,17 @@ export class RegVacuna {
     name: 'idpaciente',
     type: 'int',
     nullable: false,
+    unique: true,
   })
   idPaciente: number;
+
+  @Column({
+    name: 'fechaapertura',
+    type: 'date',
+    nullable: false,
+    default: () => 'CURRENT_DATE',
+  })
+  fechaApertura: string;
 
   @ManyToOne(() => Paciente, (paciente) => paciente.regVacunas, {
     nullable: false,

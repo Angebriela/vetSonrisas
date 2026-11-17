@@ -77,15 +77,6 @@ export class Paciente {
   fechaNacimiento: string | null;
 
   @Column({
-    name: 'pesopaciente',
-    type: 'numeric',
-    precision: 5,
-    scale: 2,
-    nullable: true,
-  })
-  pesoPaciente: number | null;
-
-  @Column({
     name: 'tipopelaje',
     type: 'varchar',
     length: 50,

@@ -14,11 +14,11 @@ export class ConsultaRepository {
   ) {}
 
   findAll() {
-    return this.repository.find({ relations: { cita: true, empleado: true } });
+    return this.repository.find({ relations: { cita: true, empleado: true, paciente: true } });
   }
 
   findById(id: number) {
-    return this.repository.findOne({ where: { idConsulta: id }, relations: { cita: true, empleado: true } });
+    return this.repository.findOne({ where: { idConsulta: id }, relations: { cita: true, empleado: true, paciente: true } });
   }
 
   create(dto: CreateConsultaDto) {

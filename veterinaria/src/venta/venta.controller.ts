@@ -13,6 +13,7 @@ import { VentaService } from './venta.service.js';
 import { CreateVentaDto } from './dto/create-venta.dto.js';
 import { CreateVentaCompletaDto } from './dto/create-venta-completa.dto.js';
 import { UpdateVentaDto } from './dto/update-venta.dto.js';
+import { AnularVentaDto } from './dto/anular-venta.dto.js';
 
 @Controller('ventas')
 export class VentaController {
@@ -36,6 +37,14 @@ export class VentaController {
   @Post('completa')
   createComplete(@Body() dto: CreateVentaCompletaDto) {
     return this.ventasService.createComplete(dto);
+  }
+
+  @Post(':id/anular')
+  anular(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AnularVentaDto,
+  ) {
+    return this.ventasService.anular(id, dto.motivo);
   }
 
   @Post()

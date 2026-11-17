@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { Paciente } from '../../paciente/entities/paciente.entity.js';
 import { Consulta } from '../../consulta/entities/consulta.entity.js';
+import { Empleado } from '../../empleados/entities/empleados.entity.js';
 import type { Relation } from 'typeorm';
 
 @Entity({
@@ -25,6 +26,13 @@ export class Cita {
     nullable: false,
   })
   idPaciente: number;
+
+  @Column({
+    name: 'idempleado',
+    type: 'int',
+    nullable: false,
+  })
+  idEmpleado: number;
 
   @Column({
     name: 'asuntocita',
@@ -59,16 +67,22 @@ export class Cita {
     name: 'estadocita',
     type: 'varchar',
     length: 20,
-    nullable: true,
+    nullable: false,
     default: 'Pendiente',
   })
-  estadoCita: string | null;
+  estadoCita: string;
 
   @ManyToOne(() => Paciente, (paciente) => paciente.citas, {
     nullable: false,
   })
   @JoinColumn({ name: 'idpaciente', referencedColumnName: 'idPaciente' })
   paciente: Relation<Paciente>;
+
+  @ManyToOne(() => Empleado, {
+    nullable: false,
+  })
+  @JoinColumn({ name: 'idempleado', referencedColumnName: 'idEmpleado' })
+  empleado: Relation<Empleado>;
 
   @OneToMany(() => Consulta, (consulta) => consulta.cita)
   consultas: Relation<Consulta>[];

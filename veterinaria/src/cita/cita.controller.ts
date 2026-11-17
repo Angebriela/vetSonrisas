@@ -3,6 +3,7 @@ import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post } from 
 import { CitaService } from './cita.service.js';
 import { CreateCitaDto } from './dto/create-cita.dto.js';
 import { UpdateCitaDto } from './dto/update-cita.dto.js';
+import { IniciarConsultaDto } from './dto/iniciar-consulta.dto.js';
 
 @Controller('citas')
 export class CitaController {
@@ -21,6 +22,19 @@ export class CitaController {
   @Post()
   create(@Body() dto: CreateCitaDto) {
     return this.service.create(dto);
+  }
+
+  @Post(':id/iniciar-consulta')
+  iniciarConsulta(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: IniciarConsultaDto,
+  ) {
+    return this.service.iniciarConsulta(id, dto);
+  }
+
+  @Post(':id/cancelar')
+  cancelar(@Param('id', ParseIntPipe) id: number) {
+    return this.service.cancelar(id);
   }
 
   @Patch(':id')

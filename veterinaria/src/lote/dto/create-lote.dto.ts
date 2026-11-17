@@ -28,7 +28,12 @@ export class CreateLoteDto {
   @Min(0)
   stockActual: number;
 
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsPositive()
   precioCosto: number;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsPositive()
+  precioVenta: number;
 
 }

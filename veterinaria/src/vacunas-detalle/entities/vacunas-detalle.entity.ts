@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 import { RegVacuna } from '../../regvacunas/entities/regvacunas.entity.js';
 import { Lote } from '../../lote/entities/lote.entity.js';
+import { Empleado } from '../../empleados/entities/empleados.entity.js';
 import type { Relation } from 'typeorm';
 
 @Entity({
@@ -55,6 +56,34 @@ export class VacunaDetalle {
     nullable: true,
   })
   motivo: string | null;
+
+  @Column({
+    name: 'idempleado',
+    type: 'int',
+    nullable: true,
+  })
+  idEmpleado: number | null;
+
+  @Column({
+    name: 'cantidad',
+    type: 'int',
+    default: 1,
+    nullable: false,
+  })
+  cantidad: number;
+
+  @Column({
+    name: 'proximadosis',
+    type: 'date',
+    nullable: true,
+  })
+  proximaDosis: string | null;
+
+  @ManyToOne(() => Empleado, {
+    nullable: true,
+  })
+  @JoinColumn({ name: 'idempleado', referencedColumnName: 'idEmpleado' })
+  empleado: Relation<Empleado> | null;
 
   @ManyToOne(() => RegVacuna, (regVacunas) => regVacunas.detalles, {
     nullable: false,

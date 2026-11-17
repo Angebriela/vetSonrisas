@@ -66,6 +66,15 @@ export class Cliente {
   })
   correo: string | null;
 
+  // TRUE solo para el cliente que representa a la propia clínica (consumo interno)
+  @Column({
+    name: 'esinterno',
+    type: 'boolean',
+    default: false,
+    nullable: false,
+  })
+  esInterno: boolean;
+
   @OneToMany(() => Paciente, (paciente) => paciente.cliente)
   pacientes: Relation<Paciente>[];
 

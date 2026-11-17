@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 import { RegCirugia } from '../../regcirugias/entities/regcirugias.entity.js';
 import { Lote } from '../../lote/entities/lote.entity.js';
+import { Empleado } from '../../empleados/entities/empleados.entity.js';
 import type { Relation } from 'typeorm';
 
 @Entity({
@@ -63,6 +64,27 @@ export class CirugiaDetalle {
     nullable: true,
   })
   motivo: string | null;
+
+  @Column({
+    name: 'idempleado',
+    type: 'int',
+    nullable: false,
+  })
+  idEmpleado: number;
+
+  @Column({
+    name: 'cantidad',
+    type: 'int',
+    default: 1,
+    nullable: false,
+  })
+  cantidad: number;
+
+  @ManyToOne(() => Empleado, {
+    nullable: false,
+  })
+  @JoinColumn({ name: 'idempleado', referencedColumnName: 'idEmpleado' })
+  empleado: Relation<Empleado>;
 
   @ManyToOne(() => RegCirugia, (regCirugia) => regCirugia.detalles, {
     nullable: false,

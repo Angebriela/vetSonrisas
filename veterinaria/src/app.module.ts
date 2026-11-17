@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import typeormConfig from './config/typeorm.config.js'; 
+import { AppController } from './app.controller.js';
+import { AppService } from './app.service.js';
 
 //export de las tablas
 import { RolModule } from './rol/rol.module.js';
@@ -20,9 +22,14 @@ import { ConsultaModule } from './consulta/consulta.module.js';
 import { VacunaDetalleModule } from './vacunas-detalle/vacunas-detalle.module.js';
 import { CirugiaDetalleModule } from './cirugias-detalle/cirugias-detalle.module.js';
 import { VentaDetalleModule } from './venta-detalle/venta-detalle.module.js';
+import { ProveedorModule } from './proveedor/proveedor.module.js';
+import { CompraModule } from './compra/compra.module.js';
+import { ReportesModule } from './reportes/reportes.module.js';
 
 
 @Module({ 
+	controllers: [AppController],
+	providers: [AppService],
 	imports: [ 
 		ConfigModule.forRoot({ 
 			isGlobal: true, 
@@ -58,6 +65,9 @@ import { VentaDetalleModule } from './venta-detalle/venta-detalle.module.js';
     VacunaDetalleModule,
     CirugiaDetalleModule,
     VentaDetalleModule,
+    ProveedorModule,
+    CompraModule,
+    ReportesModule,
 
 
 

@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
+import { DbExceptionFilter } from './common/db-exception.filter.js';
 
 async function bootstrap() {
 
@@ -23,6 +24,9 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  // Traduce los errores de PostgreSQL (triggers, procedimientos, restricciones) a HTTP
+  app.useGlobalFilters(new DbExceptionFilter());
 
   await app.listen(
     process.env.PORT ?? 3000,

@@ -21,6 +21,7 @@ export class Anamnesis {
     name: 'idpaciente',
     type: 'int',
     nullable: false,
+    unique: true,
   })
   idPaciente: number;
 
@@ -90,6 +91,14 @@ export class Anamnesis {
     nullable: true,
   })
   comportamiento: string | null;
+
+  @Column({
+    name: 'fecharegistro',
+    type: 'date',
+    default: () => 'CURRENT_DATE',
+    nullable: false,
+  })
+  fechaRegistro: string;
 
   @ManyToOne(() => Paciente, (paciente) => paciente.anamnesis, {
     nullable: false,

@@ -1,17 +1,24 @@
 import {
-  IsBoolean,
   IsDateString,
+  IsIn,
   IsInt,
   IsNotEmpty,
-  IsString,
   IsOptional,
+  IsPositive,
+  IsString,
 } from 'class-validator';
+import { ESTADOS_CITA } from '../../common/catalogos.js';
 
 export class CreateCitaDto {
 
   @IsInt()
   @IsNotEmpty()
   idPaciente: number;
+
+  // Veterinario (empleado) que atenderá la cita
+  @IsInt()
+  @IsPositive()
+  idEmpleado: number;
 
   @IsOptional()
   @IsString()
@@ -30,7 +37,7 @@ export class CreateCitaDto {
   horaFin: string;
 
   @IsOptional()
-  @IsString()
+  @IsIn(ESTADOS_CITA)
   estadoCita?: string;
 
 }

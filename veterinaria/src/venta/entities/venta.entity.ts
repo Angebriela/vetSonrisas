@@ -59,6 +59,30 @@ export class Venta {
     })
     noFactura: string;
 
+    @Column({
+        name: 'estado',
+        type: 'varchar',
+        length: 10,
+        nullable: false,
+        default: 'Emitida',
+    })
+    estado: string;
+
+    @Column({
+        name: 'motivoanulacion',
+        type: 'varchar',
+        length: 255,
+        nullable: true,
+    })
+    motivoAnulacion: string | null;
+
+    @Column({
+        name: 'fechaanulacion',
+        type: 'timestamp',
+        nullable: true,
+    })
+    fechaAnulacion: Date | null;
+
     @ManyToOne(() => Cliente, (cliente) => cliente.ventas, {
         nullable: false,
     })

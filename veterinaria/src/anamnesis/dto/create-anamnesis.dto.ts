@@ -1,4 +1,5 @@
 import {
+  IsDateString,
   IsBoolean,
   IsInt,
   IsNotEmpty,
@@ -47,5 +48,9 @@ export class CreateAnamnesisDto {
   @IsOptional()
   @IsString()
   comportamiento?: string;
+
+  @IsOptional()
+  @IsDateString()
+  fechaRegistro?: string;
 
 }

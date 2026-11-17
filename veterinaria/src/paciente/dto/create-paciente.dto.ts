@@ -44,10 +44,6 @@ export class CreatePacienteDto {
   fechaNacimiento?: string;
 
   @IsOptional()
-  @IsNumber()
-  pesoPaciente?: number;
-
-  @IsOptional()
   @IsString()
   tipoPelaje?: string;
 

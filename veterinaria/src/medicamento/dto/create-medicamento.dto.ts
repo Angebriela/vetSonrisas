@@ -1,6 +1,7 @@
 import {
   IsBoolean,
   IsDateString,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -9,6 +10,7 @@ import {
   MaxLength,
   ValidateIf,
 } from 'class-validator';
+import { PRESENTACIONES, TIPOS_MEDICAMENTO, VIAS_ADMINISTRACION } from '../../common/catalogos.js';
 
 export class CreateMedicamentoDto {
 
@@ -23,18 +25,15 @@ export class CreateMedicamentoDto {
   contenidoNeto?: string;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(50)
+  @IsIn(TIPOS_MEDICAMENTO)
   tipoMedicamento?: string;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(50)
+  @IsIn(VIAS_ADMINISTRACION)
   viaAdministracion?: string;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(50)
+  @IsIn(PRESENTACIONES)
   presentacion?: string;
 
   @ValidateIf((_, value) => value !== undefined)

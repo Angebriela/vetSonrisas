@@ -3,6 +3,7 @@ import {
   IsDateString,
   IsInt,
   IsNotEmpty,
+  IsPositive,
   IsString,
   IsOptional,
 } from 'class-validator';
@@ -16,6 +17,17 @@ export class CreateCirugiaDetalleDto {
   @IsInt()
   @IsNotEmpty()
   idLote: number;
+
+  // Cirujano responsable
+  @IsInt()
+  @IsPositive()
+  idEmpleado: number;
+
+  // Unidades del insumo que se descuentan del lote (por defecto 1)
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  cantidad?: number;
 
   @IsOptional()
   @IsString()

@@ -1,8 +1,9 @@
 const API_DEFAULT = 'http://localhost:3000';
 
-function generateInvoiceNumber() {
-    return `FAC-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
-}
+// Listas cerradas: deben coincidir con los CHECK de la base y con common/catalogos.ts del backend
+const TIPOS_MEDICAMENTO = ['Antibiótico', 'Antiparasitario', 'Antiinflamatorio', 'Analgésico', 'Anestésico', 'Vacuna', 'Vitamina', 'Antiséptico', 'Otro'];
+const VIAS_ADMINISTRACION = ['Oral', 'Inyectable', 'Tópica', 'Oftálmica', 'Ótica', 'Inhalatoria'];
+const PRESENTACIONES = ['Tableta', 'Cápsula', 'Suspensión', 'Solución', 'Ampolla', 'Frasco', 'Pomada', 'Spray', 'Pipeta', 'Polvo'];
 
 const resources = {
     clientes: {
@@ -11,6 +12,7 @@ const resources = {
             { name: 'nit', label: 'NIT', type: 'text', defaultValue: 'CF', maxLength: 20 }, { name: 'nombreCliente', label: 'Nombre', type: 'text', required: true },
             { name: 'apellidoCliente', label: 'Apellido', type: 'text', required: true }, { name: 'direccion', label: 'Dirección', type: 'text' },
             { name: 'telefono', label: 'Teléfono', type: 'tel', required: true, maxLength: 10, inputMode: 'numeric', pattern: '[0-9]{1,10}', className: 'phone-input' }, { name: 'correo', label: 'Correo electrónico', type: 'email' },
+            { name: 'esInterno', label: 'Uso interno de la clínica', type: 'checkbox' },
         ],
     },
     pacientes: {
@@ -19,14 +21,15 @@ const resources = {
             { name: 'idCliente', label: 'Dueño', type: 'select', relation: 'clientes', required: true }, { name: 'nombrePaciente', label: 'Nombre', type: 'text', required: true },
             { name: 'especiePaciente', label: 'Especie', type: 'text', required: true }, { name: 'razaPaciente', label: 'Raza', type: 'text' },
             { name: 'sexoPaciente', label: 'Sexo', type: 'select', options: [{ value: 'M', label: 'Macho' }, { value: 'H', label: 'Hembra' }] }, { name: 'colorPaciente', label: 'Color', type: 'text' }, { name: 'fechaNacimiento', label: 'Fecha de nacimiento', type: 'date' },
-            { name: 'pesoPaciente', label: 'Peso (kg)', type: 'number', step: '0.01' }, { name: 'tipoPelaje', label: 'Tipo de pelaje', type: 'text' },
+            { name: 'tipoPelaje', label: 'Tipo de pelaje', type: 'text' },
             { name: 'identificacionesParticulares', label: 'Identificaciones particulares', type: 'textarea' }, { name: 'finZootecnico', label: 'Fin zootécnico', type: 'text' },
         ],
     },
     citas: {
         endpoint: 'citas', title: 'Citas', description: 'Agenda de atención para los pacientes.', idField: 'idCita',
         fields: [
-            { name: 'idPaciente', label: 'Paciente', type: 'select', relation: 'pacientes', required: true }, { name: 'asuntoCita', label: 'Asunto', type: 'text' },
+            { name: 'idPaciente', label: 'Paciente', type: 'select', relation: 'pacientes', required: true }, { name: 'idEmpleado', label: 'Veterinario', type: 'select', relation: 'empleados', required: true },
+            { name: 'asuntoCita', label: 'Asunto', type: 'text' },
             { name: 'fechaCita', label: 'Fecha', type: 'date', required: true }, { name: 'horaInicio', label: 'Hora de inicio', type: 'time', required: true },
             { name: 'horaFin', label: 'Hora de finalización', type: 'time', required: true }, { name: 'estadoCita', label: 'Estado', type: 'select', options: ['Pendiente', 'Confirmada', 'Atendida', 'Cancelada'] },
         ],
@@ -34,8 +37,11 @@ const resources = {
     consultas: {
         endpoint: 'consultas', title: 'Consultas', description: 'Atenciones realizadas por el personal veterinario.', idField: 'idConsulta',
         fields: [
-            { name: 'idCita', label: 'Cita relacionada', type: 'select', relation: 'citas' }, { name: 'idEmpleado', label: 'Empleado', type: 'select', relation: 'empleados', required: true },
+            { name: 'idCita', label: 'Cita relacionada', type: 'select', relation: 'citas' }, { name: 'idPaciente', label: 'Paciente (obligatorio si no hay cita)', type: 'select', relation: 'pacientes' },
+            { name: 'idEmpleado', label: 'Empleado', type: 'select', relation: 'empleados', required: true },
             { name: 'motivoConsulta', label: 'Motivo de consulta', type: 'textarea', required: true }, { name: 'fechaConsulta', label: 'Fecha', type: 'date' }, { name: 'horaConsulta', label: 'Hora', type: 'time' },
+            { name: 'peso', label: 'Peso (kg)', type: 'number', step: '0.01' }, { name: 'temperatura', label: 'Temperatura (°C)', type: 'number', step: '0.1' },
+            { name: 'diagnostico', label: 'Diagnóstico', type: 'textarea' }, { name: 'tratamiento', label: 'Tratamiento', type: 'textarea' },
         ],
     },
     anamnesis: {
@@ -52,8 +58,8 @@ const resources = {
         endpoint: 'medicamentos', title: 'Medicamentos', description: 'Catálogo de productos clínicos y de venta.', idField: 'idMedicamento',
         fields: [
             { name: 'nombreMed', label: 'Nombre', type: 'text', required: true }, { name: 'contenidoNeto', label: 'Contenido neto', type: 'text' },
-            { name: 'tipoMedicamento', label: 'Tipo', type: 'text' }, { name: 'viaAdministracion', label: 'Vía de administración', type: 'text' },
-            { name: 'presentacion', label: 'Presentación', type: 'text' }, { name: 'aptoParaVenta', label: 'Apto para venta', type: 'checkbox' }, { name: 'usoClinico', label: 'Uso clínico', type: 'checkbox', defaultValue: true },
+            { name: 'tipoMedicamento', label: 'Tipo', type: 'select', options: TIPOS_MEDICAMENTO }, { name: 'viaAdministracion', label: 'Vía de administración', type: 'select', options: VIAS_ADMINISTRACION },
+            { name: 'presentacion', label: 'Presentación', type: 'select', options: PRESENTACIONES }, { name: 'aptoParaVenta', label: 'Apto para venta', type: 'checkbox' }, { name: 'usoClinico', label: 'Uso clínico', type: 'checkbox', defaultValue: true },
         ],
     },
     lotes: {
@@ -61,7 +67,7 @@ const resources = {
         fields: [
             { name: 'idMedicamento', label: 'Medicamento', type: 'select', relation: 'medicamentos', required: true }, { name: 'codigoLote', label: 'Código de lote', type: 'text', required: true },
             { name: 'fechaCaducidad', label: 'Fecha de caducidad', type: 'date', required: true }, { name: 'stockActual', label: 'Stock actual', type: 'number', step: '1', required: true },
-            { name: 'precioCosto', label: 'Precio de costo', type: 'number', step: '0.01', required: true },
+            { name: 'precioCosto', label: 'Precio de costo', type: 'number', step: '0.01', required: true }, { name: 'precioVenta', label: 'Precio de venta', type: 'number', step: '0.01', required: true },
         ],
     },
     regvacunas: {
@@ -72,7 +78,8 @@ const resources = {
         endpoint: 'vacunas-detalle', title: 'Detalle de vacunas', description: 'Aplicaciones y dosis administradas.', idField: 'idDetalleVacuna',
         fields: [
             { name: 'idRegVacunas', label: 'Registro de vacunas', type: 'select', relation: 'regvacunas', required: true }, { name: 'idLote', label: 'Lote', type: 'select', relation: 'lotes', required: true },
-            { name: 'dosis', label: 'Dosis', type: 'text' }, { name: 'fechaAdministrada', label: 'Fecha administrada', type: 'date' }, { name: 'motivo', label: 'Motivo', type: 'textarea' },
+            { name: 'idEmpleado', label: 'Aplicada por', type: 'select', relation: 'empleados', required: true }, { name: 'cantidad', label: 'Unidades usadas', type: 'number', step: '1', defaultValue: 1 },
+            { name: 'dosis', label: 'Dosis', type: 'text' }, { name: 'fechaAdministrada', label: 'Fecha administrada', type: 'date' }, { name: 'proximaDosis', label: 'Próxima dosis', type: 'date' }, { name: 'motivo', label: 'Motivo', type: 'textarea' },
         ],
     },
     regcirugias: {
@@ -83,6 +90,7 @@ const resources = {
         endpoint: 'cirugias-detalle', title: 'Detalle de cirugías', description: 'Procedimientos, motivos y lotes utilizados.', idField: 'idDetalleCirugia',
         fields: [
             { name: 'idRegCirugia', label: 'Registro de cirugía', type: 'select', relation: 'regcirugias', required: true }, { name: 'idLote', label: 'Lote', type: 'select', relation: 'lotes', required: true },
+            { name: 'idEmpleado', label: 'Cirujano', type: 'select', relation: 'empleados', required: true }, { name: 'cantidad', label: 'Unidades usadas', type: 'number', step: '1', defaultValue: 1 },
             { name: 'tipoDeCirugia', label: 'Tipo de cirugía', type: 'text' }, { name: 'nombreCirugia', label: 'Nombre de cirugía', type: 'text' },
             { name: 'fechaCirugia', label: 'Fecha de cirugía', type: 'date' }, { name: 'motivo', label: 'Motivo', type: 'textarea' },
         ],
@@ -90,8 +98,10 @@ const resources = {
     ventas: {
         endpoint: 'ventas', title: 'Ventas', description: 'Facturación y ventas realizadas en la clínica.', idField: 'idVenta',
         fields: [
+            // listOnly: se muestra en el listado pero no en el formulario (lo genera la base de datos)
+            { name: 'noFactura', label: 'No. de factura', type: 'text', listOnly: true }, { name: 'estado', label: 'Estado', type: 'text', listOnly: true },
             { name: 'idCliente', label: 'Cliente', type: 'select', relation: 'clientes', required: true }, { name: 'idEmpleado', label: 'Empleado', type: 'select', relation: 'empleados', required: true },
-            { name: 'fechaVenta', label: 'Fecha', type: 'date' }, { name: 'horaVenta', label: 'Hora', type: 'time' }, { name: 'noFactura', label: 'No. de factura', type: 'text', autoGenerate: true, readOnly: true },
+            { name: 'fechaVenta', label: 'Fecha', type: 'date' }, { name: 'horaVenta', label: 'Hora', type: 'time' },
         ],
     },
     'venta-detalle': {
@@ -117,6 +127,22 @@ const resources = {
         endpoint: 'nacionalidades', title: 'Nacionalidades', description: 'Catálogo de nacionalidades del personal.', idField: 'idNacionalidad',
         fields: [{ name: 'pais', label: 'País', type: 'text', required: true }],
     },
+    proveedores: {
+        endpoint: 'proveedores', title: 'Proveedores', description: 'Empresas a las que se les compra medicamento.', idField: 'idProveedor',
+        fields: [
+            { name: 'nombreProveedor', label: 'Nombre', type: 'text', required: true }, { name: 'nit', label: 'NIT', type: 'text', maxLength: 15 },
+            { name: 'telefono', label: 'Teléfono', type: 'tel', required: true, maxLength: 10, inputMode: 'numeric', pattern: '[0-9]{1,10}', className: 'phone-input' },
+            { name: 'correo', label: 'Correo electrónico', type: 'email' }, { name: 'direccion', label: 'Dirección', type: 'text' },
+        ],
+    },
+    compras: {
+        endpoint: 'compras', title: 'Compras', description: 'Ingreso de mercadería. Crea la compra y luego agrega sus lotes con el botón «＋ Lote».', idField: 'idCompra',
+        fields: [
+            { name: 'idProveedor', label: 'Proveedor', type: 'select', relation: 'proveedores', required: true }, { name: 'idEmpleado', label: 'Recibió', type: 'select', relation: 'empleados', required: true },
+            { name: 'fechaCompra', label: 'Fecha', type: 'date' }, { name: 'noFacturaProveedor', label: 'Factura del proveedor', type: 'text' },
+            { name: 'detalles', label: 'Lotes ingresados', type: 'text', listOnly: true, display: (row) => (row.detalles || []).map((detalle) => `${detalle.lote?.medicamento?.nombreMed || 'Lote'} ×${detalle.cantidad}`).join(', ') || 'Sin lotes' },
+        ],
+    },
 };
 
 const state = {
@@ -126,7 +152,7 @@ const state = {
     editingId: null,
     relationCache: {},
     saleItems: [],
-    saleInvoiceNumber: null,
+    customAction: null,
     calendarMonth: new Date(),
 };
 
@@ -189,6 +215,7 @@ function relationLabel(item, resourceKey) {
     if (resourceKey === 'roles') return item.nombreRol || `Rol #${item.idRol}`;
     if (resourceKey === 'nacionalidades') return item.pais || `Nacionalidad #${item.idNacionalidad}`;
     if (resourceKey === 'citas') return `${item.fechaCita || ''}${item.asuntoCita ? ` · ${item.asuntoCita}` : ''}`.trim() || `Cita #${item.idCita}`;
+    if (resourceKey === 'proveedores') return item.nombreProveedor || `Proveedor #${item.idProveedor}`;
     if (resourceKey === 'regvacunas') return `Registro #${item.idRegVacunas}`;
     if (resourceKey === 'regcirugias') return `Registro #${item.idRegCirugias}`;
     return resource ? `${resource.title.slice(0, -1)} #${item[resource.idField]}` : `#${item.id}`;
@@ -201,6 +228,7 @@ function rawFieldValue(row, field) {
 }
 
 function displayValue(row, field) {
+    if (field.display) return field.display(row);
     const raw = rawFieldValue(row, field);
     if (field.relation) {
         if (raw && typeof raw === 'object') return relationLabel(raw, field.relation);
@@ -290,7 +318,9 @@ function renderTable(resource, rows) {
     const headers = [resource.idField, ...visibleFields.map((field) => field.label)];
     const tableRows = rows.map((row) => {
         const id = row[resource.idField];
-        const receiptAction = resource.endpoint === 'ventas' ? `<button class="icon-button receipt-icon" data-action="download-receipt" data-id="${escapeHtml(id)}" title="Descargar comprobante PDF">PDF</button>` : '';
+        let receiptAction = resource.endpoint === 'ventas' ? `<button class="icon-button receipt-icon" data-action="download-receipt" data-id="${escapeHtml(id)}" title="Descargar comprobante PDF">PDF</button>` : '';
+        if (resource.endpoint === 'ventas' && row.estado === 'Emitida') receiptAction += `<button class="icon-button text-action danger-icon" data-action="void-sale" data-id="${escapeHtml(id)}" title="Anular factura y devolver el stock">Anular</button>`;
+        if (resource.endpoint === 'compras') receiptAction += `<button class="icon-button text-action" data-action="add-lot" data-id="${escapeHtml(id)}" title="Agregar un lote a esta compra">＋ Lote</button>`;
         return `<tr><td class="id-cell">#${escapeHtml(id)}</td>${visibleFields.map((field) => `<td>${escapeHtml(displayValue(row, field))}</td>`).join('')}<td class="actions-cell"><button class="icon-button" data-action="edit" data-id="${escapeHtml(id)}" title="Editar">✎</button>${receiptAction}<button class="icon-button danger-icon" data-action="delete" data-id="${escapeHtml(id)}" title="Eliminar">⌫</button></td></tr>`;
     }).join('');
     container.innerHTML = `<table><thead><tr>${headers.map((header) => `<th>${escapeHtml(header === resource.idField ? 'ID' : header)}</th>`).join('')}<th>Acciones</th></tr></thead><tbody>${tableRows}</tbody></table><div class="table-footer">${rows.length} registro${rows.length === 1 ? '' : 's'} encontrados</div>`;
@@ -337,7 +367,7 @@ function renderCalendar(resource, rows) {
         const key = calendarDateKey(year, month, day);
         const appointments = appointmentsByDate[key] || [];
         const isToday = calendarDateKey(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()) === key;
-        const appointmentCards = appointments.map((appointment) => `<div class="calendar-appointment ${appointmentStatusClass(appointment.estadoCita)}"><div class="calendar-appointment-time">${escapeHtml(String(appointment.horaInicio || '').slice(0, 5))}</div><strong>${escapeHtml(appointmentPatient(appointment))}</strong><span>${escapeHtml(appointment.asuntoCita || 'Atención veterinaria')}</span><div class="calendar-appointment-actions"><button class="calendar-action-button" data-action="edit" data-id="${escapeHtml(appointment.idCita)}" type="button" title="Editar cita">✎</button><button class="calendar-action-button" data-action="delete" data-id="${escapeHtml(appointment.idCita)}" type="button" title="Eliminar cita">⌫</button></div></div>`).join('');
+        const appointmentCards = appointments.map((appointment) => `<div class="calendar-appointment ${appointmentStatusClass(appointment.estadoCita)}"><div class="calendar-appointment-time">${escapeHtml(String(appointment.horaInicio || '').slice(0, 5))}</div><strong>${escapeHtml(appointmentPatient(appointment))}</strong><span>${escapeHtml(appointment.asuntoCita || 'Atención veterinaria')}</span><div class="calendar-appointment-actions">${['Pendiente', 'Confirmada'].includes(appointment.estadoCita) ? `<button class="calendar-action-button" data-action="start-consult" data-id="${escapeHtml(appointment.idCita)}" type="button" title="Iniciar consulta">▶</button><button class="calendar-action-button" data-action="cancel-appointment" data-id="${escapeHtml(appointment.idCita)}" type="button" title="Cancelar cita">✕</button>` : ''}<button class="calendar-action-button" data-action="edit" data-id="${escapeHtml(appointment.idCita)}" type="button" title="Editar cita">✎</button><button class="calendar-action-button" data-action="delete" data-id="${escapeHtml(appointment.idCita)}" type="button" title="Eliminar cita">⌫</button></div></div>`).join('');
         return `<div class="calendar-day${isToday ? ' today' : ''}"><div class="calendar-day-number">${day}</div><div class="calendar-appointments">${appointmentCards || '<span class="calendar-empty">Disponible</span>'}</div></div>`;
     }).join('');
 
@@ -490,10 +520,9 @@ async function downloadSaleReceipt(id) {
 }
 
 function renderForm(resource, row = {}) {
-    $('#formFields').innerHTML = resource.fields.map((field) => {
+    $('#formFields').innerHTML = resource.fields.filter((field) => !field.listOnly).map((field) => {
         const rawValue = rawFieldValue(row, field);
-        const generatedValue = field.autoGenerate && state.currentKey === 'ventas' && !state.editingId ? state.saleInvoiceNumber : undefined;
-        const value = generatedValue || (rawValue === '' && field.defaultValue !== undefined ? field.defaultValue : rawValue);
+        const value = rawValue === '' && field.defaultValue !== undefined ? field.defaultValue : rawValue;
         const required = field.required ? 'required' : '';
         const fieldId = `field-${field.name}`;
         if (field.type === 'checkbox') return `<label class="checkbox-field"><input id="${fieldId}" name="${field.name}" type="checkbox" ${value === true || (value === '' && field.defaultValue) ? 'checked' : ''}><span>${field.label}</span></label>`;
@@ -529,9 +558,21 @@ function saleLotLabel(lote) {
     return `${medicine} · lote ${lote.codigoLote} · stock ${lote.stockActual}`;
 }
 
+// El cliente interno (la propia clínica) se marca en la base con cliente.esInterno
+function isInternalClient(clientId) {
+    const client = (state.relationCache.clientes || []).find((item) => String(item.idCliente) === String(clientId));
+    return client?.esInterno === true;
+}
+
+function isLotExpired(lote) {
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    return String(lote.fechaCaducidad || '').slice(0, 10) < todayKey;
+}
+
 function isLotAllowedForClient(lote) {
     const clientId = $('#field-idCliente')?.value;
-    if (!clientId || clientId === '12') return true;
+    if (!clientId || isInternalClient(clientId)) return true;
     return lote.medicamento?.aptoParaVenta === true;
 }
 
@@ -539,13 +580,13 @@ function renderSaleItems() {
     const container = $('#saleItems');
     const clientId = $('#field-idCliente')?.value;
     const stockHint = $('#saleStockHint');
-    if (stockHint) stockHint.textContent = clientId === '12' ? 'Hospital: se permiten todos los medicamentos' : 'Solo se muestran medicamentos aptos para venta';
-    const availableLots = (state.relationCache.lotes || []).filter((lote) => Number(lote.stockActual) > 0);
+    if (stockHint) stockHint.textContent = isInternalClient(clientId) ? 'Cliente interno: se permiten todos los medicamentos' : 'Solo se muestran medicamentos aptos para venta';
+    const availableLots = (state.relationCache.lotes || []).filter((lote) => Number(lote.stockActual) > 0 && !isLotExpired(lote));
     const allowedLots = availableLots.filter(isLotAllowedForClient);
     const selectedRestrictedLots = [...new Map(state.saleItems.map((item) => findSaleLot(item.idLote)).filter((lote) => lote && !allowedLots.some((allowed) => allowed.idLote === lote.idLote)).map((lote) => [lote.idLote, lote])).values()];
     const lots = [...allowedLots, ...selectedRestrictedLots];
     if (!lots.length) {
-        container.innerHTML = '<div class="sale-empty">No hay lotes disponibles para este cliente. Los medicamentos no aptos solo se pueden facturar al hospital (cliente #12).</div>';
+        container.innerHTML = '<div class="sale-empty">No hay lotes disponibles para este cliente. Los medicamentos no aptos solo se pueden facturar al cliente interno de la clínica.</div>';
         return;
     }
     if (!state.saleItems.length) {
@@ -555,7 +596,7 @@ function renderSaleItems() {
     container.innerHTML = state.saleItems.map((item, index) => {
         const options = lots.map((lote) => {
             const allowed = isLotAllowedForClient(lote);
-            const label = allowed ? saleLotLabel(lote) : `${saleLotLabel(lote)} · solo hospital`;
+            const label = allowed ? saleLotLabel(lote) : `${saleLotLabel(lote)} · solo cliente interno`;
             return `<option value="${escapeHtml(lote.idLote)}" ${String(lote.idLote) === String(item.idLote) ? 'selected' : ''} ${allowed ? '' : 'disabled'}>${escapeHtml(label)}</option>`;
         }).join('');
         return `<div class="sale-item-row"><div class="sale-item-lot"><label>Lote ${index + 1}</label><select class="sale-lot-select" data-index="${index}"><option value="">Selecciona un lote</option>${options}</select></div><div><label>Cantidad</label><input class="sale-quantity" data-index="${index}" type="number" min="1" step="1" value="${escapeHtml(item.cantMedicamento || 1)}"></div><div><label>Precio de venta</label><input class="sale-price" data-index="${index}" type="number" min="0.01" step="0.01" value="${escapeHtml(item.precioVenta || '')}"></div><button class="icon-button danger-icon sale-item-remove" data-index="${index}" type="button" title="Quitar medicamento">⌫</button></div>`;
@@ -607,7 +648,8 @@ function validateSaleItems() {
         const lot = findSaleLot(item.idLote);
         if (!lot) return 'Selecciona un lote para cada medicamento.';
         const clientId = $('#field-idCliente')?.value;
-        if (clientId && clientId !== '12' && lot.medicamento?.aptoParaVenta !== true) return 'Este medicamento no está calificado para venta y solo puede facturarse al hospital (cliente #12).';
+        if (clientId && !isInternalClient(clientId) && lot.medicamento?.aptoParaVenta !== true) return 'Este medicamento no es apto para venta al público; solo puede facturarse al cliente interno.';
+        if (isLotExpired(lot)) return `El lote ${lot.codigoLote} está vencido.`;
         if (!Number.isInteger(quantity) || quantity <= 0) return 'La cantidad de cada medicamento debe ser un entero mayor que cero.';
         if (!Number.isFinite(price) || price <= 0) return 'El precio de venta debe ser mayor que cero.';
         quantitiesByLot[item.idLote] = (quantitiesByLot[item.idLote] || 0) + quantity;
@@ -717,7 +759,6 @@ async function saveAppointmentPatient() {
         sexoPaciente: $('#appointmentPatientSex').value.trim(),
         colorPaciente: $('#appointmentPatientColor').value.trim(),
         fechaNacimiento: $('#appointmentPatientBirthDate').value,
-        pesoPaciente: $('#appointmentPatientWeight').value ? Number($('#appointmentPatientWeight').value) : undefined,
     };
     Object.keys(payload).forEach((key) => { if (payload[key] === '' || payload[key] === undefined) delete payload[key]; });
     try {
@@ -748,7 +789,6 @@ async function openModal(mode = 'create', id = null) {
     const resource = resources[state.currentKey];
     if (!resource) return;
     state.editingId = mode === 'edit' ? id : null;
-    state.saleInvoiceNumber = state.currentKey === 'ventas' && mode === 'create' ? generateInvoiceNumber() : null;
     let row = {};
     if (mode === 'edit') {
         $('#modalTitle').textContent = 'Cargando registro…';
@@ -780,7 +820,7 @@ function closeModal() {
     document.body.classList.remove('modal-open');
     state.editingId = null;
     state.saleItems = [];
-    state.saleInvoiceNumber = null;
+    state.customAction = null;
     setQuickClientVisibility(false);
     setAppointmentClientVisibility(false);
     setAppointmentPatientVisibility(false);
@@ -791,8 +831,19 @@ async function submitForm(event) {
     const resource = resources[state.currentKey];
     const form = event.currentTarget;
     if (!form.reportValidity()) return;
+    if (state.customAction) {
+        const { fields, handler } = state.customAction;
+        try {
+            const message = await handler(formPayload(form, fields));
+            closeModal();
+            showToast(message);
+            await loadRecords();
+        } catch (error) { showToast(error.message, 'error'); }
+        return;
+    }
     const payload = {};
     resource.fields.forEach((field) => {
+        if (field.listOnly) return;
         const input = form.elements[field.name];
         if (!input) return;
         if (field.type === 'checkbox') { payload[field.name] = input.checked; return; }
@@ -802,7 +853,6 @@ async function submitForm(event) {
         else payload[field.name] = input.value;
     });
     const isEditing = Boolean(state.editingId);
-    if (isEditing && resource.fields.some((field) => field.autoGenerate)) delete payload.noFactura;
     try {
         if (state.currentKey === 'ventas' && !isEditing) {
             const saleError = validateSaleItems();
@@ -816,7 +866,8 @@ async function submitForm(event) {
             });
             if (!sale?.idVenta) throw new Error('La API no devolvió el ID de la venta creada.');
             closeModal();
-            showToast(`Venta #${sale.idVenta} y sus medicamentos guardados correctamente.`);
+            state.relationCache.lotes = null; // el stock cambió: se vuelve a pedir la próxima vez
+            showToast(`Factura ${sale.noFactura} guardada correctamente.`);
             await loadRecords();
             return;
         }
@@ -825,6 +876,94 @@ async function submitForm(event) {
         showToast(isEditing ? 'Registro actualizado correctamente.' : 'Registro creado correctamente.');
         await loadRecords();
     } catch (error) { showToast(error.message, 'error'); }
+}
+
+// ---------------------------------------------------------------------------
+// Acciones especiales. Reutilizan el mismo modal y el mismo generador de
+// formularios (renderForm): solo cambian los campos y el endpoint.
+// ---------------------------------------------------------------------------
+async function openActionModal({ eyebrow, title, submitLabel, fields, row = {}, handler }) {
+    await loadRelationCache({ fields });
+    state.editingId = null;
+    state.customAction = { fields, handler };
+    $('#modalEyebrow').textContent = eyebrow;
+    $('#modalTitle').textContent = title;
+    $('#submitEntity').textContent = submitLabel;
+    renderForm({ fields }, row);
+    $('#saleWorkflow').classList.add('hidden');
+    $('#salePartyDetails').classList.add('hidden');
+    $('#appointmentWorkflow').classList.add('hidden');
+    $('#entityModal').classList.remove('hidden');
+    document.body.classList.add('modal-open');
+    $('#formFields input, #formFields select, #formFields textarea')?.focus();
+}
+
+function formPayload(form, fields) {
+    const payload = {};
+    fields.forEach((field) => {
+        const input = form.elements[field.name];
+        if (!input || input.value === '') return;
+        if (field.type === 'number' || (field.type === 'select' && field.relation)) payload[field.name] = Number(input.value);
+        else payload[field.name] = input.value;
+    });
+    return payload;
+}
+
+function startConsultation(id) {
+    const cita = state.currentRows.find((item) => String(item.idCita) === String(id)) || {};
+    openActionModal({
+        eyebrow: `Cita #${id}`, title: 'Iniciar consulta', submitLabel: 'Iniciar consulta',
+        fields: [
+            { name: 'idEmpleado', label: 'Veterinario que atiende', type: 'select', relation: 'empleados', required: true },
+            { name: 'motivoConsulta', label: 'Motivo de consulta', type: 'textarea', required: true },
+        ],
+        row: { idEmpleado: cita.idEmpleado, motivoConsulta: cita.asuntoCita || '' },
+        handler: async (payload) => {
+            await apiRequest(`citas/${id}/iniciar-consulta`, { method: 'POST', body: JSON.stringify(payload) });
+            return 'Cita atendida y consulta creada. Completa peso, diagnóstico y tratamiento en Consultas.';
+        },
+    });
+}
+
+async function cancelAppointment(id) {
+    if (!window.confirm(`¿Cancelar la cita #${id}?`)) return;
+    try {
+        await apiRequest(`citas/${id}/cancelar`, { method: 'POST' });
+        showToast('Cita cancelada.');
+        await loadRecords();
+    } catch (error) { showToast(error.message, 'error'); }
+}
+
+function voidSale(id) {
+    const venta = state.currentRows.find((item) => String(item.idVenta) === String(id)) || {};
+    openActionModal({
+        eyebrow: `Factura ${venta.noFactura || `#${id}`}`, title: 'Anular factura', submitLabel: 'Anular y devolver stock',
+        fields: [{ name: 'motivo', label: 'Motivo de la anulación', type: 'textarea', required: true }],
+        handler: async (payload) => {
+            await apiRequest(`ventas/${id}/anular`, { method: 'POST', body: JSON.stringify(payload) });
+            state.relationCache.lotes = null;
+            return 'Factura anulada. El stock volvió a sus lotes.';
+        },
+    });
+}
+
+function addLotToPurchase(id) {
+    openActionModal({
+        eyebrow: `Compra #${id}`, title: 'Agregar lote a la compra', submitLabel: 'Ingresar lote',
+        fields: [
+            { name: 'idMedicamento', label: 'Medicamento', type: 'select', relation: 'medicamentos', required: true },
+            { name: 'codigoLote', label: 'Código de lote', type: 'text', required: true },
+            { name: 'fechaCaducidad', label: 'Fecha de caducidad', type: 'date', required: true },
+            { name: 'cantidad', label: 'Cantidad recibida', type: 'number', step: '1', required: true },
+            { name: 'precioCosto', label: 'Precio de costo', type: 'number', step: '0.01', required: true },
+            { name: 'precioVenta', label: 'Precio de venta', type: 'number', step: '0.01', required: true },
+        ],
+        handler: async (payload) => {
+            await apiRequest(`compras/${id}/lotes`, { method: 'POST', body: JSON.stringify(payload) });
+            state.relationCache.lotes = null;
+            return 'Lote ingresado. El inventario se actualizó.';
+        },
+    });
 }
 
 async function deleteRecord(id) {
@@ -883,7 +1022,7 @@ document.addEventListener('DOMContentLoaded', () => {
     $('#cancelAppointmentPatient').addEventListener('click', () => setAppointmentPatientVisibility(false));
     $('#saveAppointmentPatient').addEventListener('click', saveAppointmentPatient);
     $('#addSaleItem').addEventListener('click', () => {
-        if (!(state.relationCache.lotes || []).some((lot) => Number(lot.stockActual) > 0)) {
+        if (!(state.relationCache.lotes || []).some((lot) => Number(lot.stockActual) > 0 && !isLotExpired(lot))) {
             showToast('No hay lotes con existencias disponibles.', 'error');
             return;
         }
@@ -904,7 +1043,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (input.classList.contains('sale-lot-select')) {
             item.idLote = input.value;
             const lot = findSaleLot(item.idLote);
-            if (lot && !item.precioVenta) item.precioVenta = Number(lot.precioCosto || 0).toFixed(2);
+            if (lot) item.precioVenta = Number(lot.precioVenta || 0).toFixed(2);
             renderSaleItems();
         }
     });
@@ -942,6 +1081,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (action && action.dataset.action === 'edit') openModal('edit', action.dataset.id);
         if (action && action.dataset.action === 'delete') deleteRecord(action.dataset.id);
         if (action && action.dataset.action === 'download-receipt') downloadSaleReceipt(action.dataset.id);
+        if (action && action.dataset.action === 'start-consult') startConsultation(action.dataset.id);
+        if (action && action.dataset.action === 'cancel-appointment') cancelAppointment(action.dataset.id);
+        if (action && action.dataset.action === 'void-sale') voidSale(action.dataset.id);
+        if (action && action.dataset.action === 'add-lot') addLotToPurchase(action.dataset.id);
         if (event.target.closest('[data-new]')) openModal();
         if (event.target.closest('[data-retry]')) loadRecords();
     });

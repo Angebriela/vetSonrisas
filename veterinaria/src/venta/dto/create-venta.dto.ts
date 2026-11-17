@@ -1,13 +1,12 @@
 import {
   IsInt,
   IsPositive,
-  IsString,
   IsOptional,
   IsDateString,
   Matches,
-  MaxLength,
 } from 'class-validator';
 
+// El número de factura ya no se envía: lo genera la base con la secuencia seq_factura.
 export class CreateVentaDto {
 
   @IsInt()
@@ -27,12 +26,4 @@ export class CreateVentaDto {
     message: 'horaVenta debe tener formato HH:mm o HH:mm:ss',
   })
   horaVenta?: string;
-
-  @IsOptional()
-  @IsString()
-  @Matches(/^FAC-\d{4}$/, {
-    message: 'noFactura debe tener el formato FAC-0000',
-  })
-  @MaxLength(50)
-  noFactura?: string;
 }

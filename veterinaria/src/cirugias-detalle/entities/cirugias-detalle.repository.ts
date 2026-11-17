@@ -14,11 +14,11 @@ export class CirugiaDetalleRepository {
   ) {}
 
   findAll() {
-    return this.repository.find({ relations: { regCirugia: true, lote: true } });
+    return this.repository.find({ relations: { regCirugia: true, lote: true, empleado: true } });
   }
 
   findById(id: number) {
-    return this.repository.findOne({ where: { idDetalleCirugia: id }, relations: { regCirugia: true, lote: true } });
+    return this.repository.findOne({ where: { idDetalleCirugia: id }, relations: { regCirugia: true, lote: true, empleado: true } });
   }
 
   create(dto: CreateCirugiaDetalleDto) {

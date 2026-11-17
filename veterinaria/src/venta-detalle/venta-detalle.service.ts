@@ -10,8 +10,7 @@ import { CreateVentaDetalleDto } from './dto/create-venta-detalle.dto.js';
 import { UpdateVentaDetalleDto } from './dto/update-venta-detalle.dto.js';
 import { Venta } from '../venta/entities/venta.entity.js';
 import { Lote } from '../lote/entities/lote.entity.js';
-
-const HOSPITAL_CLIENT_ID = 12;
+import { Cliente } from '../cliente/entities/cliente.entity.js';
 
 @Injectable()
 export class VentaDetalleService {
@@ -110,8 +109,9 @@ export class VentaDetalleService {
     ]);
     if (!sale) throw new BadRequestException('La venta indicada no existe');
     if (!lot) throw new BadRequestException('El lote indicado no existe');
-    if (sale.idCliente !== HOSPITAL_CLIENT_ID && lot.medicamento?.aptoParaVenta !== true) {
-      throw new BadRequestException('Este medicamento no está calificado para venta y solo puede facturarse al hospital (cliente #12)');
+    const cliente = await this.dataSource.getRepository(Cliente).findOne({ where: { idCliente: sale.idCliente } });
+    if (cliente?.esInterno !== true && lot.medicamento?.aptoParaVenta !== true) {
+      throw new BadRequestException('Este medicamento no es apto para venta al público; solo puede facturarse al cliente interno de la clínica');
     }
     if (quantity !== undefined && Number(lot.stockActual) < quantity) {
       throw new BadRequestException(`El lote ${lot.codigoLote} no tiene existencias suficientes`);

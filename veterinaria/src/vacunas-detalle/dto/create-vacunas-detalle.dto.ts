@@ -3,6 +3,7 @@ import {
   IsDateString,
   IsInt,
   IsNotEmpty,
+  IsPositive,
   IsString,
   IsOptional,
 } from 'class-validator';
@@ -17,6 +18,17 @@ export class CreateVacunaDetalleDto {
   @IsNotEmpty()
   idLote: number;
 
+  // Empleado que aplicó la vacuna
+  @IsInt()
+  @IsPositive()
+  idEmpleado: number;
+
+  // Unidades que se descuentan del lote (por defecto 1)
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  cantidad?: number;
+
   @IsOptional()
   @IsString()
   dosis?: string;
@@ -24,6 +36,10 @@ export class CreateVacunaDetalleDto {
   @IsOptional()
   @IsDateString()
   fechaAdministrada?: string;
+
+  @IsOptional()
+  @IsDateString()
+  proximaDosis?: string;
 
   @IsOptional()
   @IsString()

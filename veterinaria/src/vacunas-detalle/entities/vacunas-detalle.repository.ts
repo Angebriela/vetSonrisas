@@ -14,11 +14,11 @@ export class VacunaDetalleRepository {
   ) {}
 
   findAll() {
-    return this.repository.find({ relations: { regVacunas: true, lote: true } });
+    return this.repository.find({ relations: { regVacunas: true, lote: true, empleado: true } });
   }
 
   findById(id: number) {
-    return this.repository.findOne({ where: { idDetalleVacuna: id }, relations: { regVacunas: true, lote: true } });
+    return this.repository.findOne({ where: { idDetalleVacuna: id }, relations: { regVacunas: true, lote: true, empleado: true } });
   }
 
   create(dto: CreateVacunaDetalleDto) {

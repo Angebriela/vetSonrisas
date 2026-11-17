@@ -11,6 +11,8 @@ export default registerAs(
         password: process.env.DB_PASSWORD,
         database: process.env.DB_DATABASE,
         schema: process.env.DB_SCHEMA,
+        // Supabase exige conexión cifrada; en local se deja apagado (DB_SSL=false)
+        ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
         
         autoLoadEntities: true,
         synchronize: false,
